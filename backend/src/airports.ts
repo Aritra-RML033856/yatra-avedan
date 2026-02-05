@@ -92,3 +92,16 @@ export async function getAirports(
     }
   }
 }
+
+/**
+ * Get unique countries from international airports
+ */
+export async function getCountries(): Promise<{ name: string, code: string }[]> {
+  const airports = await getMinAirports();
+  const countries = new Set<string>();
+  airports.forEach(a => countries.add(a.country));
+  return Array.from(countries).sort().map(c => ({
+    name: c,
+    code: c.substring(0, 2).toUpperCase() // Simple mock code
+  }));
+}

@@ -88,6 +88,22 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
       }
   };
 
+  const formatLocation = (loc: any) => {
+      if (!loc) return 'N/A';
+      if (typeof loc === 'string') return loc;
+      // Handle Hotel/Car location object
+      if (loc.cityName) return `${loc.cityName}${loc.stateName ? `, ${loc.stateName}` : ''}`;
+      return JSON.stringify(loc);
+  };
+
+  const formatStation = (stn: any) => {
+      if (!stn) return 'N/A';
+      if (typeof stn === 'string') return stn;
+      // Handle Train station object
+      if (stn.stnName && stn.stnCode) return `${stn.stnName} (${stn.stnCode})`;
+      return JSON.stringify(stn);
+  };
+
   const renderContent = () => {
       switch (type) {
           case 'flight':
@@ -139,7 +155,7 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <SectionHeader title="Stay Details" />
                         <Stack spacing={1}>
-                            <DetailRow icon={<LocationOn fontSize="small" />} label="Location" value={details.location} />
+                            <DetailRow icon={<LocationOn fontSize="small" />} label="Location" value={formatLocation(details.location)} />
                             <Box sx={{ display: 'flex', gap: 3 }}>
                                 <DetailRow icon={<Event fontSize="small" />} label="Check-in" value={`${formatDate(details.checkinDate)} ${details.checkinTime}`} />
                                 <DetailRow icon={<Event fontSize="small" />} label="Check-out" value={`${formatDate(details.checkoutDate)} ${details.checkoutTime}`} />
@@ -176,8 +192,8 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <SectionHeader title="Rental Details" />
                         <Stack spacing={1}>
-                            <DetailRow icon={<LocationOn fontSize="small" />} label="Pickup" value={details.pickupLocation} />
-                            <DetailRow icon={<LocationOn fontSize="small" />} label="Dropoff" value={details.dropoffLocation} />
+                            <DetailRow icon={<LocationOn fontSize="small" />} label="Pickup" value={formatLocation(details.pickupLocation)} />
+                            <DetailRow icon={<LocationOn fontSize="small" />} label="Dropoff" value={formatLocation(details.dropoffLocation)} />
                             <DetailRow icon={<Event fontSize="small" />} label="Date & Time" value={`${formatDate(details.pickupDate)} ${details.pickupTime}`} />
                         </Stack>
                     </Grid>
@@ -208,12 +224,12 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
                             <SectionHeader title="Journey" />
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                                 <Box>
-                                    <Typography variant="h6">{details.departFrom}</Typography>
+                                    <Typography variant="h6">{formatStation(details.departFrom)}</Typography>
                                     <Typography variant="caption" color="text.secondary">Origin</Typography>
                                 </Box>
                                 <Train sx={{ color: 'text.disabled' }} />
                                 <Box>
-                                    <Typography variant="h6">{details.arriveAt}</Typography>
+                                    <Typography variant="h6">{formatStation(details.arriveAt)}</Typography>
                                     <Typography variant="caption" color="text.secondary">Destination</Typography>
                                 </Box>
                             </Box>

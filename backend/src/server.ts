@@ -49,6 +49,8 @@ app.use(express.json());
     console.log('Checking database schema...');
     await createTables();
     await seedData(); // Idempotent (ON CONFLICT DO NOTHING)
+    const { seedLocations } = await import('./seed_locations.js');
+    await seedLocations();
     console.log('Database tables created and seeded.');
   } catch (err) {
     console.error('Database initialization error:', err);

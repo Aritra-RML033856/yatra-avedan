@@ -96,7 +96,7 @@ export const createTables = async () => {
 
     // 5. File Uploads Table
     await client.query(`
-      CREATE TABLE IF NOT EXISTS file_uploads (
+      create TABLE IF NOT EXISTS file_uploads (
         id SERIAL PRIMARY KEY,
         trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,
         uploaded_by INTEGER REFERENCES users(id),
@@ -104,6 +104,40 @@ export const createTables = async () => {
         filename VARCHAR(255) NOT NULL,
         filepath TEXT NOT NULL,
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 6. Hotel Cities Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS hotel_cities (
+        id SERIAL PRIMARY KEY,
+        city_code VARCHAR(50) NOT NULL,
+        city_name VARCHAR(255) NOT NULL,
+        state_id VARCHAR(50),
+        state_name VARCHAR(255),
+        country_id VARCHAR(50),
+        country_name VARCHAR(255)
+      )
+    `);
+
+    // 7. Car Cities Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS car_cities (
+        id SERIAL PRIMARY KEY,
+        city_code VARCHAR(50) NOT NULL,
+        city_name VARCHAR(255) NOT NULL,
+        state_id VARCHAR(50),
+        state_name VARCHAR(255)
+      )
+    `);
+
+    // 8. Train Stations Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS train_stations (
+        id SERIAL PRIMARY KEY,
+        station_code VARCHAR(50) NOT NULL,
+        station_name VARCHAR(255) NOT NULL,
+        station_city VARCHAR(255)
       )
     `);
 

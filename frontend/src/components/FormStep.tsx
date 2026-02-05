@@ -14,6 +14,7 @@ interface FormStepProps {
   isLastStep: boolean;
   isValid: boolean;
   isSubmitting?: boolean;
+  hideButtons?: boolean;
   children: React.ReactNode;
 }
 
@@ -26,6 +27,7 @@ const FormStep: React.FC<FormStepProps> = ({
   isLastStep,
   isValid,
   isSubmitting = false,
+  hideButtons = false,
   children
 }) => {
   const theme = useTheme();
@@ -95,37 +97,41 @@ const FormStep: React.FC<FormStepProps> = ({
         </motion.div>
       </AnimatePresence>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-        <Button
-          disabled={activeStep === 0}
-          onClick={onBack}
-          sx={{ mr: 1 }}
-          size="large"
-        >
-          Back
-        </Button>
-        <Box sx={{ flex: '1 1 auto' }} />
-        {onClear && (
-            <Button
-                variant="outlined"
-                color="error"
-                onClick={onClear}
-                startIcon={<Delete />}
-                sx={{ mr: 2 }}
-            >
-                Clear All
-            </Button>
-        )}
-        <Button
-          variant="contained"
-          onClick={onNext}
-          disabled={!isValid || isSubmitting}
-          size="large"
-          sx={{ px: 4 }}
-        >
-          {isLastStep ? (isSubmitting ? 'Submitting...' : 'Submit Request') : 'Next Step'}
-        </Button>
-      </Box>
+
+
+      {!hideButtons && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+          <Button
+            disabled={activeStep === 0}
+            onClick={onBack}
+            sx={{ mr: 1 }}
+            size="large"
+          >
+            Back
+          </Button>
+          <Box sx={{ flex: '1 1 auto' }} />
+          {onClear && (
+              <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={onClear}
+                  startIcon={<Delete />}
+                  sx={{ mr: 2 }}
+              >
+                  Clear All
+              </Button>
+          )}
+          <Button
+            variant="contained"
+            onClick={onNext}
+            disabled={!isValid || isSubmitting}
+            size="large"
+            sx={{ px: 4 }}
+          >
+            {isLastStep ? (isSubmitting ? 'Submitting...' : 'Submit Request') : 'Next Step'}
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -18,6 +18,8 @@ out/
 # Backend Specific
 backend/uploads/
 coverage/
+verify_locations.ts
+seed_locations.ts
 
 # Misc
 .DS_Store

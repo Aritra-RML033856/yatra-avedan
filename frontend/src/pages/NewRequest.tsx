@@ -42,6 +42,9 @@ import { toast, Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import ItineraryReview from '../components/ItineraryReview';
 import PillOptionGroup from '../components/PillOptionGroup';
+import HotelAutocomplete from '../components/HotelAutocomplete';
+import CarCityAutocomplete from '../components/CarCityAutocomplete';
+import TrainStationAutocomplete from '../components/TrainStationAutocomplete';
 
 // ----------------------------------------------------------------------
 
@@ -172,7 +175,7 @@ const NewRequest: React.FC = () => {
 
   const handleSubmit = async (intent: 'save' | 'mmt_redirect') => {
     setValidationTriggered(true);
-    if (!tripName || !businessPurpose || itineraries.length === 0) {
+    if (!tripName || itineraries.length === 0) {
       toast.error('Please fill all required fields and add at least one itinerary');
       return;
     }
@@ -199,18 +202,70 @@ const NewRequest: React.FC = () => {
       });
       
       const referenceNo = response.data.data.referenceNo;
+      const tripId = response.data.data.tripId;
       
       if (intent === 'mmt_redirect') {
           toast.success(`Redirecting to MMT Portal... (Ref: ${referenceNo})`);
-          // Simulate Redirect
+          
+          // Construct the context payload based on trip itineraries
+          const context = itineraries.map(it => {
+            const details = it.details;
+            let contextItem: any = { type: it.type };
+
+            if (it.type === 'flight') {
+              contextItem = {
+                ...contextItem,
+                tripType: details.tripType,
+                departFrom: details.departFrom,
+                arriveAt: details.arriveAt,
+                departureDate: details.departureDate,
+                returnDate: details.returnDate,
+                classPreference: details.classPreference,
+                seatPreference: details.seatPreference,
+                mealPreference: details.mealPreference
+              };
+            } else if (it.type === 'hotel') {
+              contextItem = {
+                ...contextItem,
+                location: details.location?.cityName || details.location,
+                checkinDate: details.checkinDate,
+                checkinTime: details.checkinTime,
+                checkoutDate: details.checkoutDate,
+                checkoutTime: details.checkoutTime
+              };
+            } else if (it.type === 'car') {
+              contextItem = {
+                ...contextItem,
+                pickupLocation: details.pickupLocation?.cityName || details.pickupLocation,
+                dropoffLocation: details.dropoffLocation?.cityName || details.dropoffLocation,
+                pickupDate: details.pickupDate,
+                pickupTime: details.pickupTime,
+                carType: details.carType,
+                fuelType: details.fuelType
+              };
+            } else if (it.type === 'train') {
+              contextItem = {
+                ...contextItem,
+                departFrom: details.departFrom?.stnCode || details.departFrom,
+                arriveAt: details.arriveAt?.stnCode || details.arriveAt,
+                departureDate: details.departureDate,
+                classPreference: details.classPreference
+              };
+            }
+            return contextItem;
+          });
+
+          // Serialize context
+          const contextStr = encodeURIComponent(JSON.stringify(context));
+          
+          // Construct URL
+          const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
+          const mmtUrl = `${baseUrl}:4000/?trip_id=${tripId}&redirect_url=${baseUrl}:3000/mmt-callback&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
+          
           setTimeout(() => {
-              // In a real app, this would be the actual MMT URL
-              // For now, we mimic the behavior by just going to My Trips but maybe showing a different message
-              // Or actually redirecting to a dummy page? 
-              // Let's just go to My Trips but show a specific toast.
-              window.open('https://www.makemytrip.com/business', '_blank'); // Open MMT in new tab
+              window.open(mmtUrl, '_blank');
               navigate('/my-trips');
-          }, 1500);
+          }, 1000);
       } else {
           toast.success(`Trip Request Saved! Ref: ${referenceNo}`);
           navigate('/my-trips');
@@ -237,7 +292,7 @@ const NewRequest: React.FC = () => {
   // Step Validation Logic
   const isStepValid = () => {
     if (activeStep === 0) {
-        if (!tripName || !businessPurpose) return false;
+        if (!tripName) return false;
         if (travelType === 'International' && (!destinationCountry || visaRequired === '')) return false;
         return true;
     }
@@ -291,16 +346,19 @@ const NewRequest: React.FC = () => {
   };
 
   const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to clear all fields? This action cannot be undone.')) {
-        setTripName('');
-        setTravelType('Domestic');
-        setDestinationCountry('');
-        setVisaRequired('');
-        setBusinessPurpose('');
-        setItineraries([]);
-        setActiveStep(0);
+    if (window.confirm('Are you sure you want to clear the fields for this step?')) {
+        if (activeStep === 0) {
+            setTripName('');
+            setTravelType('Domestic');
+            setDestinationCountry('');
+            setVisaRequired('');
+            setBusinessPurpose('');
+        } else if (activeStep === 1) {
+            setItineraries([]);
+        }
+        // No clear action for Step 2 (Review)
         setValidationTriggered(false);
-        toast.success('Form cleared');
+        toast.success('Current step cleared');
     }
   };
 
@@ -352,6 +410,7 @@ const NewRequest: React.FC = () => {
           isLastStep={activeStep === steps.length - 1}
           isValid={isStepValid()}
           isSubmitting={isSubmitting}
+          hideButtons={activeStep === 2}
         >
           {/* STEP 0: Trip Details */}
           {activeStep === 0 && (
@@ -435,7 +494,7 @@ const NewRequest: React.FC = () => {
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <FormControl component="fieldset" error={validationTriggered && visaRequired === ''}>
-                                            <FormLabel component="legend">Visa Required?</FormLabel>
+                                            <FormLabel component="legend" required>Visa Required?</FormLabel>
                                             <RadioGroup
                                             row
                                             value={visaRequired}
@@ -455,13 +514,11 @@ const NewRequest: React.FC = () => {
                                     label="Business Purpose"
                                     value={businessPurpose}
                                     onChange={(e) => setBusinessPurpose(e.target.value)}
-                                    required
                                     multiline
                                     rows={4}
                                     placeholder="Describe the purpose of your trip..."
                                     inputProps={{ maxLength: 250 }}
-                                    helperText={validationTriggered && !businessPurpose ? "Business Purpose is required" : `${businessPurpose.length}/250 characters`}
-                                    error={validationTriggered && !businessPurpose}
+                                    helperText={`${businessPurpose.length}/250 characters`}
                                 />
                             </Grid>
                        </Grid>
@@ -529,7 +586,13 @@ const NewRequest: React.FC = () => {
                                     />
                                 )}
                                 {item.type === 'hotel' && (
-                                    <HotelItineraryForm item={item} index={index} onUpdate={updateItinerary} validationTriggered={validationTriggered} />
+                                    <HotelItineraryForm 
+                                        item={item} 
+                                        index={index} 
+                                        onUpdate={updateItinerary} 
+                                        validationTriggered={validationTriggered} 
+                                        travelType={travelType.toLowerCase() as 'domestic' | 'international'}
+                                    />
                                 )}
                                 {item.type === 'car' && (
                                     <CarItineraryForm item={item} index={index} onUpdate={updateItinerary} validationTriggered={validationTriggered} />
@@ -553,76 +616,106 @@ const NewRequest: React.FC = () => {
                         Please review your trip details carefully before submitting.
                     </Alert>
                 </Grid>
-                <Grid size={{ xs: 12, md: 8 }}>
-                    <Paper sx={{ p: 3, mb: 3 }}>
-                         <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
+
+                {/* Left Column: Trip Details Summary */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                    <Paper sx={{ p: 3, height: '100%', bgcolor: 'primary.lighter', color: 'primary.darker' }}>
+                         <Typography variant="h6" gutterBottom sx={{ color: 'inherit', borderBottom: 1, borderColor: 'primary.main', pb: 1, mb: 3 }}>
                             Trip Summary
                          </Typography>
-                         <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="subtitle2" color="text.secondary">Trip Name</Typography>
-                                <Typography variant="body1">{tripName}</Typography>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="subtitle2" color="text.secondary">Type</Typography>
-                                <Chip label={travelType} color="primary" size="small" variant="outlined" />
-                            </Grid>
-                            {travelType === 'International' && (
-                                <>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">Destination</Typography>
-                                        <Typography variant="body1">{destinationCountry}</Typography>
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">Visa</Typography>
-                                        <Typography variant="body1">{visaRequired ? 'Required' : 'Not Required'}</Typography>
-                                    </Grid>
-                                </>
-                            )}
-                            <Grid size={{ xs: 12 }}>
-                                <Typography variant="subtitle2" color="text.secondary">Purpose</Typography>
-                                <Typography variant="body1" sx={{ fontStyle: 'italic' }}>"{businessPurpose}"</Typography>
-                            </Grid>
-                         </Grid>
-                    </Paper>
+                         
+                         <Stack spacing={2.5}>
+                             <Box>
+                                <Typography variant="subtitle2" sx={{ opacity: 0.7, mb: 0.5 }}>Trip Name</Typography>
+                                <Typography variant="body1" fontWeight="bold">{tripName}</Typography>
+                             </Box>
 
-                <Grid size={{ xs: 12 }}>
-                    <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>Itinerary Details ({itineraries.length})</Typography>
-                    {itineraries.map((item, idx) => (
-                        <ItineraryReview key={item.id} item={item} index={idx} />
-                    ))}
+                             <Box>
+                                <Typography variant="subtitle2" sx={{ opacity: 0.7, mb: 0.5 }}>Type</Typography>
+                                <Chip 
+                                    label={travelType} 
+                                    color="primary" 
+                                    size="small" 
+                                    variant="filled"
+                                    sx={{ bgcolor: 'primary.main', color: 'common.white' }} 
+                                />
+                             </Box>
+
+                             {travelType === 'International' && (
+                                <>
+                                    <Box>
+                                        <Typography variant="subtitle2" sx={{ opacity: 0.7, mb: 0.5 }}>Destination</Typography>
+                                        <Typography variant="body1" fontWeight="bold">{destinationCountry}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="subtitle2" sx={{ opacity: 0.7, mb: 0.5 }}>Visa Status</Typography>
+                                        <Typography variant="body1" fontWeight="bold">{visaRequired ? 'Required' : 'Not Required'}</Typography>
+                                    </Box>
+                                </>
+                             )}
+
+                             <Box>
+                                <Typography variant="subtitle2" sx={{ opacity: 0.7, mb: 0.5 }}>Business Purpose</Typography>
+                                <Typography variant="body2" sx={{ fontStyle: 'italic', bgcolor: 'rgba(255,255,255,0.4)', p: 1.5, borderRadius: 1 }}>
+                                    "{businessPurpose || 'None provided'}"
+                                </Typography>
+                             </Box>
+                         </Stack>
+                    </Paper>
                 </Grid>
 
-                 {/* Action Buttons for Review Step */}
-                 <Stack direction="row" justifyContent="flex-end" spacing={2} sx={{ mt: 3, width: '100%' }}>
-                    <Button 
-                        variant="outlined" 
-                        color="inherit" 
-                        onClick={handleBack}
-                        disabled={isSubmitting}
-                    >
-                        Back
-                    </Button>
-                    <Button 
-                        variant="outlined" 
-                        color="primary" 
-                        onClick={() => handleSubmit('save')}
-                        disabled={isSubmitting}
-                        startIcon={isSubmitting ? null : <AssignmentIcon />}
-                    >
-                        Save Only
-                    </Button>
-                    <Button 
-                        variant="contained" 
-                        color="primary" 
-                        onClick={() => handleSubmit('mmt_redirect')}
-                        disabled={isSubmitting}
-                        endIcon={isSubmitting ? null : <FlightTakeoff />}
-                    >
-                        Save & Next (MMT)
-                    </Button>
-                 </Stack>
-             </Grid>
+                {/* Right Column: Itineraries & Actions */}
+                <Grid size={{ xs: 12, md: 8 }}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                            Itinerary Details <Chip label={itineraries.length} size="small" color="default" sx={{ ml: 1, fontWeight: 'bold' }} />
+                        </Typography>
+                        
+                        {itineraries.length === 0 ? (
+                             <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', bgcolor: 'background.neutral' }}>
+                                <Typography color="text.secondary">No itinerary items added.</Typography>
+                             </Paper>
+                        ) : (
+                            itineraries.map((item, idx) => (
+                                <ItineraryReview key={item.id} item={item} index={idx} />
+                            ))
+                        )}
+                    </Box>
+
+                    {/* Action Buttons */}
+                     <Stack direction="row" justifyContent="flex-end" spacing={2} sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                        <Button 
+                            variant="outlined" 
+                            color="inherit" 
+                            onClick={handleBack}
+                            disabled={isSubmitting}
+                            size="large"
+                        >
+                            Back
+                        </Button>
+                        <Button 
+                            variant="outlined" 
+                            color="primary" 
+                            onClick={() => handleSubmit('save')}
+                            disabled={isSubmitting}
+                            startIcon={isSubmitting ? null : <AssignmentIcon />}
+                            size="large"
+                        >
+                            Save Only
+                        </Button>
+                        <Button 
+                            variant="contained" 
+                            color="primary" 
+                            onClick={() => handleSubmit('mmt_redirect')}
+                            disabled={isSubmitting}
+                            endIcon={isSubmitting ? null : <FlightTakeoff />}
+                            size="large"
+                            sx={{ px: 3 }}
+                        >
+                            Save & Next (MMT)
+                        </Button>
+                     </Stack>
+                </Grid>
             </Grid>
           )}
 
@@ -825,11 +918,20 @@ const HotelItineraryForm: React.FC<{
   index: number;
   onUpdate: (index: number, key: string, value: any) => void;
   validationTriggered: boolean;
-}> = ({ item, index, onUpdate, validationTriggered }) => {
+  travelType: 'domestic' | 'international';
+}> = ({ item, index, onUpdate, validationTriggered, travelType }) => {
   return (
     <Grid container spacing={3}>
        <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Location" value={item.details.location || ''} onChange={(e) => onUpdate(index, 'location', e.target.value)} required error={validationTriggered && !item.details.location} helperText={validationTriggered && !item.details.location ? "Required" : ""} />
+          <HotelAutocomplete
+            label="Location"
+            value={item.details.location || null}
+            onChange={(val) => onUpdate(index, 'location', val)}
+            travelType={travelType}
+            required
+            error={validationTriggered && !item.details.location}
+            helperText={validationTriggered && !item.details.location ? "Required" : ""}
+          />
        </Grid>
        <Grid size={{ xs: 6, md: 3 }}>
           <CustomDatePicker label="Check-in Date" value={item.details.checkinDate || ''} onChange={(val) => onUpdate(index, 'checkinDate', val)} required error={validationTriggered && !item.details.checkinDate} helperText={validationTriggered && !item.details.checkinDate ? "Required" : ""} />
@@ -890,10 +992,24 @@ const CarItineraryForm: React.FC<{
   return (
     <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
-            <TextField fullWidth label="Pick-up Location" value={item.details.pickupLocation || ''} onChange={(e) => onUpdate(index, 'pickupLocation', e.target.value)} required error={validationTriggered && !item.details.pickupLocation} helperText={validationTriggered && !item.details.pickupLocation ? "Required" : ""} />
+            <CarCityAutocomplete
+                label="Pick-up Location"
+                value={item.details.pickupLocation || null}
+                onChange={(val) => onUpdate(index, 'pickupLocation', val)}
+                required
+                error={validationTriggered && !item.details.pickupLocation}
+                helperText={validationTriggered && !item.details.pickupLocation ? "Required" : ""}
+            />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-            <TextField fullWidth label="Drop-off Location" value={item.details.dropoffLocation || ''} onChange={(e) => onUpdate(index, 'dropoffLocation', e.target.value)} required error={validationTriggered && !item.details.dropoffLocation} helperText={validationTriggered && !item.details.dropoffLocation ? "Required" : ""} />
+             <CarCityAutocomplete
+                label="Drop-off Location"
+                value={item.details.dropoffLocation || null}
+                onChange={(val) => onUpdate(index, 'dropoffLocation', val)}
+                required
+                error={validationTriggered && !item.details.dropoffLocation}
+                helperText={validationTriggered && !item.details.dropoffLocation ? "Required" : ""}
+            />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
             <CustomDatePicker label="Pick-up Date" value={item.details.pickupDate || ''} onChange={(val) => onUpdate(index, 'pickupDate', val)} required error={validationTriggered && !item.details.pickupDate} helperText={validationTriggered && !item.details.pickupDate ? "Required" : ""} />
@@ -962,11 +1078,10 @@ const TrainItineraryForm: React.FC<{
     <Grid container spacing={3}>
       {/* Depart / Arrive */}
       <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          fullWidth
+        <TrainStationAutocomplete
           label="Depart From"
-          value={item.details.departFrom || ''}
-          onChange={(e) => onUpdate(index, 'departFrom', e.target.value)}
+          value={item.details.departFrom || null}
+          onChange={(val) => onUpdate(index, 'departFrom', val)}
           required
           error={validationTriggered && !item.details.departFrom}
           helperText={validationTriggered && !item.details.departFrom ? "Required" : ""}
@@ -974,11 +1089,10 @@ const TrainItineraryForm: React.FC<{
       </Grid>
 
       <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          fullWidth
+        <TrainStationAutocomplete
           label="Arrive At"
-          value={item.details.arriveAt || ''}
-          onChange={(e) => onUpdate(index, 'arriveAt', e.target.value)}
+          value={item.details.arriveAt || null}
+          onChange={(val) => onUpdate(index, 'arriveAt', val)}
           required
           error={validationTriggered && !item.details.arriveAt}
           helperText={validationTriggered && !item.details.arriveAt ? "Required" : ""}

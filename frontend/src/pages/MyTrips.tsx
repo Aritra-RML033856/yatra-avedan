@@ -284,7 +284,7 @@ const MyTrips: React.FC = () => {
       } else if (it.type === 'hotel') {
         contextItem = {
           ...contextItem,
-          location: details.location,
+          location: details.location?.cityName || details.location,
           checkinDate: details.checkinDate,
           checkinTime: details.checkinTime,
           checkoutDate: details.checkoutDate,
@@ -293,8 +293,8 @@ const MyTrips: React.FC = () => {
       } else if (it.type === 'car') {
         contextItem = {
           ...contextItem,
-          pickupLocation: details.pickupLocation,
-          dropoffLocation: details.dropoffLocation,
+          pickupLocation: details.pickupLocation?.cityName || details.pickupLocation,
+          dropoffLocation: details.dropoffLocation?.cityName || details.dropoffLocation,
           pickupDate: details.pickupDate,
           pickupTime: details.pickupTime,
           carType: details.carType,
@@ -303,8 +303,8 @@ const MyTrips: React.FC = () => {
       } else if (it.type === 'train') {
         contextItem = {
           ...contextItem,
-          departFrom: details.departFrom,
-          arriveAt: details.arriveAt,
+          departFrom: details.departFrom?.stnCode || details.departFrom,
+          arriveAt: details.arriveAt?.stnCode || details.arriveAt,
           departureDate: details.departureDate,
           classPreference: details.classPreference
         };
@@ -316,7 +316,8 @@ const MyTrips: React.FC = () => {
     const contextStr = encodeURIComponent(JSON.stringify(context));
     
     // Construct URL
-    const mmtUrl = `http://localhost:4000/?trip_id=${trip.id}&redirect_url=http://localhost:3000/mmt-callback&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
+    const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
+    const mmtUrl = `${baseUrl}:4000/?trip_id=${trip.id}&redirect_url=${baseUrl}:3000/mmt-callback&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
     
     // Open MMT
     window.open(mmtUrl, '_blank');
