@@ -101,17 +101,7 @@ const MyTrips: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleCloseTrip = async (tripId: number) => {
-    try {
-      await axios.post(`${API_BASE_URL}/api/trips/${tripId}/close`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Refresh trips
-      refreshTrips();
-    } catch (error) {
-      console.error('Error closing trip:', error);
-    }
-  };
+
 
   const refreshTrips = async () => {
     try {
@@ -425,17 +415,8 @@ const MyTrips: React.FC = () => {
                     </Button>
                   )}
 
-                  {(trip.status === 'BOOKED' || trip.status === 'SELECT_OPTION') && (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      startIcon={<CloseIcon />}
-                      onClick={() => handleCloseTrip(trip.id)}
-                    >
-                      Close Trip
-                    </Button>
-                  )}
+                  {/* Close Trip Button Removed as per requirement (Auto-Close implemented) */}
+
 
                   {/* CANCEL TRIP BUTTON */}
                   {isTripCancellable(trip) && (
