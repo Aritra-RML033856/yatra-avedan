@@ -11,9 +11,20 @@ import { utils } from 'xlsx';
 import pool from './database.js';
 import { createTables, seedData } from './database.js';
 import { login, authenticate, changePassword } from './auth.js';
-import { createTrip } from './trips.js';
+import { createTrip, autoCloseTrips } from './trips.js';
 import { prepareFileAttachments, sendTripNotificationEmail } from './email.js';
 import locationsRouter from './routes/locations.js';
+
+// Auto-close trips scheduler (runs every hour)
+setInterval(() => {
+  console.log('Running auto-close trips job...');
+  autoCloseTrips();
+}, 60 * 60 * 1000);
+
+// Run once on startup
+setTimeout(() => {
+  autoCloseTrips();
+}, 5000);
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), 'uploads');

@@ -544,25 +544,25 @@ export const generateExcelForBookedTrips = async (startDate?: string, endDate?: 
     }).join('\n\n');
 
     return {
-      'Reference No': row.reference_no,
-      'Trip Name': row.trip_name,
-      'Travel Type': row.travel_type,
-      'Destination': row.destination_country || 'N/A',
-      'Visa Required': row.visa_required ? 'Yes' : 'No',
-      'Purpose': row.business_purpose,
-      'Status': row.status,
-      'Total Cost': row.total_cost ? `₹${row.total_cost.toLocaleString('en-IN')}` : 'N/A',
-      'Selected Option': row.option_selected || 'N/A',
-      'Created Date': new Date(row.created_at).toLocaleDateString(),
-      'Submitted Date': row.submitted_at ? new Date(row.submitted_at).toLocaleDateString() : 'N/A',
-      'Booked Date': row.booked_at ? new Date(row.booked_at).toLocaleDateString() : 'N/A',
-      'Requester Name': row.requester_name,
-      'Requester ID': row.requester_id,
-      'Email': row.requester_email,
-      'Department': row.department,
-      'Designation': row.designation,
-      'Reporting Manager': row.reporting_manager || 'N/A',
-      'Approval History': approvals
+      reference_no: row.reference_no,
+      trip_name: row.trip_name,
+      travel_type: row.travel_type,
+      destination_country: row.destination_country || 'N/A',
+      visa_required: row.visa_required ? 'Yes' : 'No',
+      business_purpose: row.business_purpose,
+      status: row.status,
+      total_cost: row.total_cost ? `₹${row.total_cost.toLocaleString('en-IN')}` : 'N/A',
+      option_selected: row.option_selected || 'N/A',
+      created_at: new Date(row.created_at).toLocaleDateString(),
+      submitted_at: row.submitted_at ? new Date(row.submitted_at).toLocaleDateString() : 'N/A',
+      booked_at: row.booked_at ? new Date(row.booked_at).toLocaleDateString() : 'N/A',
+      requester_name: row.requester_name,
+      requester_id: row.requester_id,
+      email: row.requester_email,
+      department: row.department,
+      designation: row.designation,
+      reporting_manager: row.reporting_manager || 'N/A',
+      approval_history: approvals
     };
   });
 
@@ -582,6 +582,61 @@ export const generateExcelForBookedTrips = async (startDate?: string, endDate?: 
 
   return write(wb, { bookType: 'xlsx', type: 'buffer' });
 };
+
+export const autoCloseTrips = async () => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Find all BOOKED trips
+      const res = await client.query(`
+        SELECT t.id, t.reference_no, json_agg(it.details) as itineraries
+        FROM trips t
+        JOIN itineraries it ON t.id = it.trip_id
+        WHERE t.status = 'BOOKED'
+        GROUP BY t.id
+      `);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (const trip of res.rows) {
+        let maxDate: Date | null = null;
+
+        // Find the latest date in the itinerary
+        for (const details of trip.itineraries) {
+          let dateStr = null;
+          // Check various date fields based on type (or just check all relevant fields)
+          // Flight: returnDate > departureDate
+          if (details.returnDate) dateStr = details.returnDate;
+          else if (details.departureDate) dateStr = details.departureDate;
+          else if (details.checkoutDate) dateStr = details.checkoutDate; // Hotel
+          else if (details.checkinDate) dateStr = details.checkinDate;
+          else if (details.dropoffDate) dateStr = details.dropoffDate; // Car
+          else if (details.pickupDate) dateStr = details.pickupDate;
+
+          if (dateStr) {
+            const d = new Date(dateStr);
+            if (!maxDate || d > maxDate) {
+              maxDate = d;
+            }
+          }
+        }
+
+        // If trip has dates and the last date is in the past (< today)
+        if (maxDate && maxDate < today) {
+          console.log(`Auto-closing trip ${trip.reference_no} (ID: ${trip.id}). Max Date: ${maxDate.toDateString()}`);
+          await client.query(`UPDATE trips SET status = 'CLOSED', closed_at = NOW(), updated_at = NOW() WHERE id = $1`, [trip.id]);
+        }
+      }
+
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error in autoCloseTrips:', error);
+  }
+};
+
 
 export const getAllUsers = async () => {
   return await pool.query('SELECT id, username, userid, email, designation, department, role, created_at FROM users ORDER BY created_at DESC');
