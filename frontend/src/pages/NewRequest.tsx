@@ -18,7 +18,6 @@ import {
   Button,
   Box,
   Card,
-  CardContent,
   Autocomplete,
   Chip,
   Dialog,
@@ -26,17 +25,16 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Divider,
   useTheme,
   Alert,
   Stack
 } from '@mui/material';
-import { Add, Delete, CheckCircle, FlightTakeoff, Hotel, DirectionsCar, Train } from '@mui/icons-material';
+import { FlightTakeoff, Hotel, Train } from '@mui/icons-material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AirportAutocomplete from '../components/AirportAutocomplete';
 import FormStep from '../components/FormStep';
 import ItineraryCard from '../components/ItineraryCard';
-import { PageTransition, AnimatedButton, StaggerContainer, varFadeInUp, MotionBox } from '../components/AnimatedComponents';
+import { PageTransition, AnimatedButton, StaggerContainer } from '../components/AnimatedComponents';
 import { CustomDatePicker, TimeSelect } from '../components/CustomPickers';
 import { toast, Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -534,10 +532,10 @@ const NewRequest: React.FC = () => {
                     {[
                         { type: 'flight', icon: <FlightTakeoff />, label: 'Add Flight', color: 'primary' },
                         { type: 'hotel', icon: <Hotel />, label: 'Add Hotel', color: 'secondary' },
-                        { type: 'car', icon: <DirectionsCar />, label: 'Add Car', color: 'warning' },
+                        // { type: 'car', icon: <DirectionsCar />, label: 'Add Car', color: 'warning' },
                         { type: 'train', icon: <Train />, label: 'Add Train', color: 'info' },
                     ].map((btn) => (
-                        <Grid size={{ xs: 6, md: 3 }} key={btn.type}>
+                        <Grid size={{ xs: 6, md: 4 }} key={btn.type}>
                             <AnimatedButton
                                 fullWidth
                                 variant="outlined"
@@ -592,6 +590,7 @@ const NewRequest: React.FC = () => {
                                         onUpdate={updateItinerary} 
                                         validationTriggered={validationTriggered} 
                                         travelType={travelType.toLowerCase() as 'domestic' | 'international'}
+                                        destinationCountry={destinationCountry}
                                     />
                                 )}
                                 {item.type === 'car' && (
@@ -784,12 +783,7 @@ const FlightItineraryForm: React.FC<{
   validationTriggered: boolean;
 }> = ({ item, index, onUpdate, travelType, destinationCountry, validationTriggered }) => {
   const [tripType, setTripType] = useState(item.details.tripType || 'oneway');
-  const timeSlots = [
-    { value: '12:00', label: '12AM - 8AM' },
-    { value: '08:00', label: '8AM - 12PM' },
-    { value: '12:00', label: '12PM - 8PM' },
-    { value: '20:00', label: '8PM - 12AM' }
-  ];
+
 
   return (
     <Grid container spacing={3}>
@@ -919,7 +913,8 @@ const HotelItineraryForm: React.FC<{
   onUpdate: (index: number, key: string, value: any) => void;
   validationTriggered: boolean;
   travelType: 'domestic' | 'international';
-}> = ({ item, index, onUpdate, validationTriggered, travelType }) => {
+  destinationCountry?: string;
+}> = ({ item, index, onUpdate, validationTriggered, travelType, destinationCountry }) => {
   return (
     <Grid container spacing={3}>
        <Grid size={{ xs: 12 }}>
@@ -928,6 +923,7 @@ const HotelItineraryForm: React.FC<{
             value={item.details.location || null}
             onChange={(val) => onUpdate(index, 'location', val)}
             travelType={travelType}
+            destinationCountry={destinationCountry}
             required
             error={validationTriggered && !item.details.location}
             helperText={validationTriggered && !item.details.location ? "Required" : ""}
