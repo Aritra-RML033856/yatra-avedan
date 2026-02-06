@@ -141,6 +141,17 @@ export const createTables = async () => {
       )
     `);
 
+    // 9. Airports Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS airports (
+        id SERIAL PRIMARY KEY,
+        iata_code VARCHAR(10) UNIQUE NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        city VARCHAR(255),
+        country VARCHAR(255) NOT NULL
+      )
+    `);
+
     console.log("✅ Database Schema Created (Fresh Start)");
     console.log("✅ Database Schema Created (Fresh Start)");
 

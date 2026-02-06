@@ -23,6 +23,7 @@ interface HotelAutocompleteProps {
   value: HotelCity | null;
   onChange: (value: HotelCity | null) => void;
   travelType: 'domestic' | 'international';
+  destinationCountry?: string; // New prop
   required?: boolean;
   error?: boolean;
   helperText?: string;
@@ -33,6 +34,7 @@ const HotelAutocomplete: React.FC<HotelAutocompleteProps> = ({
   value,
   onChange,
   travelType,
+  destinationCountry, // Destructure
   required = false,
   error = false,
   helperText = '',
@@ -57,6 +59,7 @@ const HotelAutocomplete: React.FC<HotelAutocompleteProps> = ({
           params: {
             travelType,
             q: query,
+            destinationCountry, // Pass to API
           },
         });
         setOptions(response.data);
@@ -67,7 +70,7 @@ const HotelAutocomplete: React.FC<HotelAutocompleteProps> = ({
         setLoading(false);
       }
     }, 300),
-    [token, travelType]
+    [token, travelType, destinationCountry]
   );
 
   const handleInputChange = (_event: any, newInputValue: string) => {

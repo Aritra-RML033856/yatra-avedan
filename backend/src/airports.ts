@@ -3,7 +3,6 @@
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import Fuse from 'fuse.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,28 +48,72 @@ export async function getMinAirports(): Promise<Airport[]> {
 export async function searchAirports(
   query: string,
   travelType: 'domestic' | 'international',
-  limit = 100
+  limit = 20,
+  destinationCountry?: string
 ): Promise<Airport[]> {
   const airports = await getAirports(travelType);
 
   if (!query || query.trim().length === 0) {
-    return airports.slice(0, limit); // Return first N results if no query
+    return airports.slice(0, limit);
   }
 
-  const fuse = new Fuse(airports, {
-    keys: [
-      { name: 'name', weight: 0.7 },
-      { name: 'city', weight: 0.6 },
-      { name: 'country', weight: 0.5 },
-      { name: 'iata', weight: 1.0 }
-    ],
-    threshold: 0.3,
-    includeScore: true,
-    minMatchCharLength: 1,
-  });
+  // Enforce 2 char limit (consistent with Hotel search)
+  if (query.trim().length < 2) {
+    return [];
+  }
 
-  const results = fuse.search(query.trim(), { limit });
-  return results.map(result => result.item);
+
+  const q = query.trim().toLowerCase();
+
+  // Custom scoring function to mimic SQL logic
+  const score = (airport: Airport): number => {
+    let s = 0;
+    const nameLow = airport.name.toLowerCase();
+    const cityLow = airport.city.toLowerCase();
+    const countryLow = airport.country.toLowerCase();
+    const iataLow = airport.iata.toLowerCase();
+
+    // 0. Destination Country Check (Highest Priority)
+    if (destinationCountry && countryLow === destinationCountry.toLowerCase()) {
+      s += 1000;
+    }
+
+    // 1. City Name Matches
+    if (cityLow.startsWith(q)) s += 500;
+    else if (cityLow.includes(` ${q}`)) s += 400;
+
+    // 2. City Code (IATA) Matches
+    if (iataLow.startsWith(q)) s += 300;
+
+    // 3. Airport Name Matches
+    if (nameLow.startsWith(q)) s += 200;
+    else if (nameLow.includes(` ${q}`)) s += 100;
+
+    // 4. Country Name Matches
+    if (countryLow.startsWith(q)) s += 50;
+    else if (countryLow.includes(` ${q}`)) s += 25;
+
+    // Filter out if no match at all (score is still base ranking from dest country)
+    // If destinationCountry is matched (s>=1000), we accept even if no name match?
+    // No, user query MUST match something.
+    // So distinct check for match:
+    const matches =
+      cityLow.startsWith(q) || cityLow.includes(` ${q}`) ||
+      iataLow.startsWith(q) ||
+      nameLow.startsWith(q) || nameLow.includes(` ${q}`) ||
+      countryLow.startsWith(q) || countryLow.includes(` ${q}`);
+
+    if (!matches) return -1;
+    return s;
+  };
+
+  const results = airports
+    .map(a => ({ item: a, score: score(a) }))
+    .filter(x => x.score > -1)
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.item);
+
+  return results.slice(0, limit);
 }
 
 /**
@@ -78,11 +121,12 @@ export async function searchAirports(
  */
 export async function getAirports(
   travelType: 'domestic' | 'international',
-  query?: string
+  query?: string,
+  destinationCountry?: string
 ): Promise<Airport[]> {
   if (query && query.trim().length > 0) {
     // If there's a search query, use Fuse.js search
-    return await searchAirports(query, travelType);
+    return await searchAirports(query, travelType, 20, destinationCountry);
   } else {
     // Otherwise return all airports
     if (travelType === 'domestic') {

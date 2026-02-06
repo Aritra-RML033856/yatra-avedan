@@ -110,6 +110,7 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
           params: {
             travelType,
             q: query,
+            destinationCountry,
           },
         });
         const searchResults = response.data;
@@ -128,7 +129,7 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         setSearchLoading(false);
       }
     }, 300),
-    [token, travelType, filteredAirports]
+    [token, travelType, filteredAirports, destinationCountry]
   );
 
   // Handle input change with immediate local filtering and debounced backend search
