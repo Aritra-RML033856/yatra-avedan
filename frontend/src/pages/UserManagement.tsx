@@ -61,9 +61,7 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_BASE_URL}/api/users`);
       setUsers(response.data.rows);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -109,13 +107,9 @@ const UserManagement: React.FC = () => {
   const handleSubmit = async () => {
     try {
       if (editingUser) {
-        await axios.put(`${API_BASE_URL}/api/users/${editingUser.id}`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.put(`${API_BASE_URL}/api/users/${editingUser.id}`, formData);
       } else {
-        await axios.post(`${API_BASE_URL}/api/users`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.post(`${API_BASE_URL}/api/users`, formData);
       }
       fetchUsers();
       handleClose();
@@ -127,9 +121,7 @@ const UserManagement: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/users/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.delete(`${API_BASE_URL}/api/users/${id}`);
         fetchUsers();
       } catch (error) {
         console.error('Error deleting user:', error);

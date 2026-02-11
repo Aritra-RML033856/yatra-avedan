@@ -85,9 +85,7 @@ const MyTrips: React.FC = () => {
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/trips/my`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_BASE_URL}/api/trips/my`);
         setTrips(response.data);
       } catch (error) {
         console.error('Error fetching trips:', error);
@@ -105,9 +103,7 @@ const MyTrips: React.FC = () => {
 
   const refreshTrips = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/trips/my`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_BASE_URL}/api/trips/my`);
       setTrips(response.data);
     } catch (error) {
       console.error('Error fetching trips:', error);
@@ -167,8 +163,6 @@ const MyTrips: React.FC = () => {
     try {
       await axios.post(`${API_BASE_URL}/api/trips/${rescheduleTrip.id}/reschedule`, {
         itineraries: rescheduleItineraries
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       setRescheduleDialog(false);
       setRescheduleTrip(null);
@@ -238,8 +232,6 @@ const MyTrips: React.FC = () => {
     try {
       await axios.post(`${API_BASE_URL}/api/trips/${cancelTripId}/cancel`, {
         reason: cancellationReason
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       
       setCancelReasonDialog(false);

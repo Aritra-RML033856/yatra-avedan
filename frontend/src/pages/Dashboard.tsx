@@ -55,9 +55,7 @@ const Dashboard: React.FC = () => {
       try {
         setError(null);
         console.log('Fetching KPIs...');
-        const response = await axios.get(`${API_BASE_URL}/api/dashboard/kpis`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_BASE_URL}/api/dashboard/kpis`);
         console.log('KPI Data received:', response.data);
         if (response.data) {
            setKpiData(response.data);

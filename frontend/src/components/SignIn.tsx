@@ -127,7 +127,8 @@ const SignIn: React.FC = () => {
         password,
         remember,
       });
-      login(response.data.token, response.data.user);
+      // @ts-ignore
+      login(response.data.accessToken, response.data.refreshToken, response.data.user);
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please check credentials.');

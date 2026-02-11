@@ -13,6 +13,27 @@ export interface AuthUser {
   reporting_manager_id?: string;
 }
 
+const ACCESS_TOKEN_EXPIRY = '9h';
+const REFRESH_TOKEN_EXPIRY_DAYS = 10;
+
+export const generateAccessToken = (user: AuthUser) => {
+  return jwt.sign(user, process.env.JWT_SECRET!, { expiresIn: ACCESS_TOKEN_EXPIRY });
+};
+
+export const generateRefreshToken = async (user: AuthUser) => {
+  const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET!, { expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d` });
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+
+  await pool.query(
+    'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)',
+    [refreshToken, user.id, expiresAt]
+  );
+
+  return refreshToken;
+};
+
 export const login = async (userid: string, password: string) => {
   const result = await pool.query('SELECT * FROM users WHERE userid = $1', [userid]);
   if (result.rows.length === 0) {
@@ -26,7 +47,7 @@ export const login = async (userid: string, password: string) => {
   }
 
   // ✅ include reporting_manager_id, username, email, designation in token
-  const tokenPayload = {
+  const tokenPayload: AuthUser = {
     id: user.id,
     username: user.username,
     userid: user.userid,
@@ -37,14 +58,63 @@ export const login = async (userid: string, password: string) => {
     reporting_manager_id: user.reporting_manager_id,
   };
 
-  const token = jwt.sign(tokenPayload, process.env.JWT_SECRET!, {
-    expiresIn: '30d',
-  });
+  const accessToken = generateAccessToken(tokenPayload);
+  const refreshToken = await generateRefreshToken(tokenPayload);
 
   return {
-    token,
-    user: tokenPayload as AuthUser,
+    accessToken,
+    refreshToken,
+    user: tokenPayload,
   };
+};
+
+export const refreshAccessToken = async (refreshToken: string) => {
+  if (!refreshToken) {
+    throw new Error('Refresh token required');
+  }
+
+  try {
+    // Verify token signature
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!) as { id: number };
+
+    // Check if token exists in DB and is not expired
+    const result = await pool.query(
+      'SELECT * FROM refresh_tokens WHERE token = $1 AND user_id = $2 AND expires_at > NOW()',
+      [refreshToken, decoded.id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Invalid or expired refresh token');
+    }
+
+    // Get user details
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+    if (userResult.rows.length === 0) {
+      throw new Error('User not found');
+    }
+
+    const user = userResult.rows[0];
+    const tokenPayload: AuthUser = {
+      id: user.id,
+      username: user.username,
+      userid: user.userid,
+      email: user.email,
+      designation: user.designation,
+      department: user.department,
+      role: user.role,
+      reporting_manager_id: user.reporting_manager_id,
+    };
+
+    const newAccessToken = generateAccessToken(tokenPayload);
+
+    return {
+      accessToken: newAccessToken,
+      user: tokenPayload,
+    };
+
+  } catch (err) {
+    throw new Error('Invalid refresh token');
+  }
 };
 
 export const authenticate = (token: string) => {
@@ -79,4 +149,9 @@ export const changePassword = async (user: AuthUser, currentPassword: string, ne
   await pool.query('UPDATE users SET encrypted_password = $1 WHERE id = $2', [hashedNewPassword, user.id]);
 
   return { success: true, message: 'Password changed successfully' };
+};
+
+export const logout = async (refreshToken: string) => {
+  await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
+  return { success: true };
 };

@@ -133,6 +133,33 @@ app.post('/api/auth/login', async (req: any, res: any) => {
   }
 });
 
+app.post('/api/auth/refresh', async (req: any, res: any) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token required' });
+    }
+    const { refreshAccessToken } = await import('./auth.js');
+    const result = await refreshAccessToken(refreshToken);
+    res.json(result);
+  } catch (err: any) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/logout', async (req: any, res: any) => {
+  try {
+    const { refreshToken } = req.body;
+    if (refreshToken) {
+      const { logout } = await import('./auth.js');
+      await logout(refreshToken);
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/auth/change-password', authMiddleware, async (req: any, res: any) => {
   try {
     const { currentPassword, newPassword } = req.body;

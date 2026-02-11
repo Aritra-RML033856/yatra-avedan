@@ -152,6 +152,17 @@ export const createTables = async () => {
       )
     `);
 
+    // 10. Refresh Tokens Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log("✅ Database Schema Created (Fresh Start)");
     console.log("✅ Database Schema Created (Fresh Start)");
 

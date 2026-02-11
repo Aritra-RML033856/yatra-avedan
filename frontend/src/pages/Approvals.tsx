@@ -113,9 +113,7 @@ const Approvals: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/approvals/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_BASE_URL}/api/approvals/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -153,8 +151,7 @@ const Approvals: React.FC = () => {
       const offset = pageNum * limit;
       
       const response = await axios.get(
-        `${API_BASE_URL}/api/approvals?limit=${limit}&offset=${offset}&filter=${filter}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_BASE_URL}/api/approvals?limit=${limit}&offset=${offset}&filter=${filter}`
       );
       
       const newApprovals = response.data;
@@ -199,8 +196,6 @@ const Approvals: React.FC = () => {
       await axios.post(`${API_BASE_URL}/api/approvals/${approvalId}`, {
         action,
         comments: comment
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       
       // Refresh list (remove the item from the list locally to avoid refetching whole page)

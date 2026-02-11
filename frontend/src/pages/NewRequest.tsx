@@ -158,9 +158,7 @@ const NewRequest: React.FC = () => {
     };
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/trips/create`, tripData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.post(`${API_BASE_URL}/api/trips/create`, tripData);
       toast.success(`Visa Request submitted! Ref: ${response.data.data.referenceNo}`);
       setVisaDialogOpen(false);
       setVisaCountry('');
@@ -195,9 +193,7 @@ const NewRequest: React.FC = () => {
     };
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/trips/create`, tripData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.post(`${API_BASE_URL}/api/trips/create`, tripData);
       
       const referenceNo = response.data.data.referenceNo;
       const tripId = response.data.data.tripId;

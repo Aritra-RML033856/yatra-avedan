@@ -150,7 +150,6 @@ const TravelManagement: React.FC = () => {
 
       const response = await axios.get(`${API_BASE_URL}/api/trips/booked/excel`, {
         params,
-        headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
 
@@ -223,9 +222,7 @@ const TravelManagement: React.FC = () => {
         url = `${API_BASE_URL}/api/trips/cancelled`;
       }
 
-      const response = await axios.get(`${url}?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${url}?${params.toString()}`);
       
       const newTrips = response.data;
       if (newTrips.length < limit) {
@@ -359,7 +356,7 @@ const TravelManagement: React.FC = () => {
       formData.append('file', visaFile);
       formData.append('totalCost', visaCost);
       await axios.post(`${API_BASE_URL}/api/trips/${visaUploadArgs.tripId}/visa-upload`, formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       setVisaUploadArgs(null);
       setVisaFile(null);
@@ -380,7 +377,7 @@ const TravelManagement: React.FC = () => {
       const formData = new FormData();
       Array.from(files).forEach(file => formData.append('files', file));
       await axios.post(`${API_BASE_URL}/api/trips/${tripId}/options`, formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       refreshTrips();
     } catch (error) {
@@ -402,7 +399,6 @@ const TravelManagement: React.FC = () => {
   
         await axios.post(`${API_BASE_URL}/api/trips/${selectedReceiptTrip.id}/receipts`, formData, {
           headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
           }
         });
@@ -431,8 +427,6 @@ const TravelManagement: React.FC = () => {
     try {
       await axios.post(`${API_BASE_URL}/api/trips/${selectedCancellationTrip.id}/confirm-cancellation`, {
         cancellationCost: parseInt(cancellationCost)
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       setCancellationConfirmOpen(false);
       setSelectedCancellationTrip(null);

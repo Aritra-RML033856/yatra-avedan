@@ -76,9 +76,7 @@ const Analytics: React.FC = () => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/api/analytics`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_BASE_URL}/api/analytics`);
         setAnalyticsData(response.data);
         setError(null);
       } catch (error) {
