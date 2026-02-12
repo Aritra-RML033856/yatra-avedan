@@ -1,5 +1,6 @@
 // Dashboard.tsx (fixed)
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -278,7 +279,7 @@ const Dashboard: React.FC = () => {
              <Box>
                <Typography variant="overline" sx={{ opacity: 0.8 }}>Next Trip</Typography>
                <Typography variant="h4" sx={{ fontWeight: 700 }}>{trip.destination_country || 'Destination'}</Typography>
-               <Typography variant="h6" sx={{ opacity: 0.9 }}>{date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Typography>
+               <Typography variant="h6" sx={{ opacity: 0.9 }}>{formatDate(date)}</Typography>
              </Box>
              <Box sx={{ textAlign: 'right' }}>
                <Typography variant="h3" sx={{ fontWeight: 800 }}>{daysLeft}</Typography>

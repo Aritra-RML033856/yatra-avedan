@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -860,12 +861,12 @@ const TravelManagement: React.FC = () => {
                                 <strong>To:</strong> {(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.code || itinerary.details.arriveAt.name) : itinerary.details.arriveAt) || 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <span><strong>Departure:</strong> {itinerary.details.departureDate || 'N/A'}</span>
+                                <span><strong>Departure:</strong> {formatDate(itinerary.details.departureDate)}</span>
                                 <span><strong>Time:</strong> {itinerary.details.departTime ? `${itinerary.details.departTime} (${getTimeSlotLabel(itinerary.details.departTime)})` : 'N/A'}</span>
                               </Typography>
                               {itinerary.details.tripType === 'roundtrip' && itinerary.details.returnDate && (
                                 <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                  <span><strong>Return:</strong> {itinerary.details.returnDate}</span>
+                                  <span><strong>Return:</strong> {formatDate(itinerary.details.returnDate)}</span>
                                   <span><strong>Time:</strong> {itinerary.details.returnTime ? `${itinerary.details.returnTime} (${getTimeSlotLabel(itinerary.details.returnTime)})` : 'N/A'}</span>
                                 </Typography>
                               )}
@@ -887,8 +888,8 @@ const TravelManagement: React.FC = () => {
                                 <strong>Location:</strong> {(typeof itinerary.details.location === 'object' ? (itinerary.details.location.cityName || JSON.stringify(itinerary.details.location)) : itinerary.details.location) || 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <span><strong>Check-in:</strong> {itinerary.details.checkinDate || 'N/A'} at {itinerary.details.checkinTime || 'N/A'}</span>
-                                <span><strong>Check-out:</strong> {itinerary.details.checkoutDate || 'N/A'} at {itinerary.details.checkoutTime || 'N/A'}</span>
+                                <span><strong>Check-in:</strong> {formatDate(itinerary.details.checkinDate)} at {itinerary.details.checkinTime || 'N/A'}</span>
+                                <span><strong>Check-out:</strong> {formatDate(itinerary.details.checkoutDate)} at {itinerary.details.checkoutTime || 'N/A'}</span>
                               </Typography>
                               <Typography variant="body2">
                                 <strong>Meals:</strong> {itinerary.details.mealType?.join(', ') || 'N/A'}
@@ -911,8 +912,8 @@ const TravelManagement: React.FC = () => {
                                 <span><strong>To:</strong> {(typeof itinerary.details.dropoffLocation === 'object' ? (itinerary.details.dropoffLocation.cityName || JSON.stringify(itinerary.details.dropoffLocation)) : itinerary.details.dropoffLocation) || 'N/A'}</span>
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <span><strong>Pick-up:</strong> {itinerary.details.pickupDate || 'N/A'} at {itinerary.details.pickupTime || 'N/A'}</span>
-                                <span><strong>Drop-off:</strong> {itinerary.details.dropoffDate || 'N/A'} at {itinerary.details.dropoffTime || 'N/A'}</span>
+                                <span><strong>Pick-up:</strong> {formatDate(itinerary.details.pickupDate)} at {itinerary.details.pickupTime || 'N/A'}</span>
+                                <span><strong>Drop-off:</strong> {formatDate(itinerary.details.dropoffDate)} at {itinerary.details.dropoffTime || 'N/A'}</span>
                               </Typography>
                               <Typography variant="body2">
                                 <strong>Car Type:</strong> {itinerary.details.carType || 'N/A'}
@@ -935,7 +936,7 @@ const TravelManagement: React.FC = () => {
                                 <span><strong>To:</strong> {(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.stnName || itinerary.details.arriveAt.stnCode) : itinerary.details.arriveAt) || 'N/A'}</span>
                               </Typography>
                               <Typography variant="body2">
-                                <strong>Departure:</strong> {itinerary.details.departureDate || 'N/A'} at {itinerary.details.departTime ? `${itinerary.details.departTime} (${getTimeSlotLabel(itinerary.details.departTime)})` : 'N/A'}
+                                <strong>Departure:</strong> {formatDate(itinerary.details.departureDate)} at {itinerary.details.departTime ? `${itinerary.details.departTime} (${getTimeSlotLabel(itinerary.details.departTime)})` : 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 4 }}>
                                 <span><strong>Class:</strong> {itinerary.details.classPreference || 'N/A'}</span>

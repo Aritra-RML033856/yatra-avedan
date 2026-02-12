@@ -1,9 +1,15 @@
 import pool from './database.js';
 import type { AuthUser } from './auth.js';
 import { sendTripNotificationEmail } from './email.js';
+import {
+  TRIP_STATUS,
+  USER_ROLES,
+  FILE_TYPES,
+  EMAIL_SUBJECTS
+} from './constants.js';
 
 export const getApprovedTrips = async (limit: number = 20, offset: number = 0, statusFilter?: string) => {
-  let whereClause = `t.status IN ('APPROVED', 'SELECT_OPTION', 'OPTION_SELECTED', 'BOOKED')`;
+  let whereClause = `t.status IN ('${TRIP_STATUS.APPROVED}', '${TRIP_STATUS.SELECT_OPTION}', '${TRIP_STATUS.OPTION_SELECTED}', '${TRIP_STATUS.BOOKED}')`;
   const params: any[] = [limit, offset];
 
   if (statusFilter) {
@@ -84,8 +90,8 @@ export const getCancelledTripsForAdmin = async (limit: number = 20, offset: numb
     LEFT JOIN users u ON t.requester_id = u.userid
     LEFT JOIN itineraries it ON t.id = it.trip_id
     LEFT JOIN file_uploads fu ON t.id = fu.trip_id
-    WHERE t.status = 'CANCELLATION_PENDING' 
-       OR (t.status = 'CANCELLED' AND t.booked_at IS NOT NULL)
+    WHERE t.status = '${TRIP_STATUS.CANCELLATION_PENDING}' 
+       OR (t.status = '${TRIP_STATUS.CANCELLED}' AND t.booked_at IS NOT NULL)
     GROUP BY t.id, u.email
     ORDER BY t.created_at DESC
     LIMIT $1 OFFSET $2
@@ -109,14 +115,14 @@ export const requestCancellation = async (tripId: number, reason: string, user: 
   if (!tripResult.rows.length) throw new Error('Trip not found');
   const trip = tripResult.rows[0];
 
-  let newStatus = 'CANCELLED';
-  let emailSubject = 'Trip Cancelled';
+  let newStatus = TRIP_STATUS.CANCELLED;
+  let emailSubject = EMAIL_SUBJECTS.TRIP_CANCELLED;
   let emailBody = `Your trip ${trip.reference_no} has been cancelled correctly.\nReason: ${reason}`;
 
   // Case 2: If status is BOOKED, changes to CANCELLATION_PENDING
-  if (trip.status === 'BOOKED') {
-    newStatus = 'CANCELLATION_PENDING';
-    emailSubject = 'Trip Cancellation Requested';
+  if (trip.status === TRIP_STATUS.BOOKED) {
+    newStatus = TRIP_STATUS.CANCELLATION_PENDING;
+    emailSubject = EMAIL_SUBJECTS.TRIP_CANCELLATION_REQUESTED;
     emailBody = `Cancellation requested for Trip ${trip.reference_no}.\nReason: ${reason}\nStatus is now pending Travel Admin confirmation.`;
   }
 
@@ -141,12 +147,12 @@ export const requestCancellation = async (tripId: number, reason: string, user: 
   }
 
   // 2. To Travel Admin (If Case 2)
-  if (newStatus === 'CANCELLATION_PENDING') {
-    const travelAdmin = await pool.query('SELECT email FROM users WHERE role = $1 LIMIT 1', ['travel_admin']);
+  if (newStatus === TRIP_STATUS.CANCELLATION_PENDING) {
+    const travelAdmin = await pool.query('SELECT email FROM users WHERE role = $1 LIMIT 1', [USER_ROLES.TRAVEL_ADMIN]);
     if (travelAdmin.rows.length) {
       sendTripNotificationEmail(
         travelAdmin.rows[0].email,
-        `ACTION REQUIRED: Cancellation Request for Booked Trip #${trip.reference_no}`,
+        `${EMAIL_SUBJECTS.CANCELLATION_ACTION_REQUIRED} #${trip.reference_no}`,
         trip,
         `Requester has requested cancellation for a booked trip.\nReason: ${reason}\nPlease process cancellation charges.`,
         undefined,
@@ -167,13 +173,13 @@ export const confirmCancellation = async (tripId: number, cancellationCost: numb
   if (!tripResult.rows.length) throw new Error('Trip not found');
   const trip = tripResult.rows[0];
 
-  if (trip.status !== 'CANCELLATION_PENDING') {
+  if (trip.status !== TRIP_STATUS.CANCELLATION_PENDING) {
     throw new Error('Trip is not pending cancellation');
   }
 
   await pool.query(
     'UPDATE trips SET status = $1, cancellation_cost = $2, updated_at = NOW() WHERE id = $3',
-    ['CANCELLED', cancellationCost, tripId]
+    [TRIP_STATUS.CANCELLED, cancellationCost, tripId]
   );
 
   // Notify Requester
@@ -181,7 +187,7 @@ export const confirmCancellation = async (tripId: number, cancellationCost: numb
   if (requester.rows.length) {
     sendTripNotificationEmail(
       requester.rows[0].email,
-      `Trip #${trip.reference_no} Cancellation Confirmed`,
+      `${EMAIL_SUBJECTS.CANCELLATION_CONFIRMED} - Trip #${trip.reference_no}`,
       trip,
       `Your trip cancellation has been processed.\nCancellation Charges: ₹${cancellationCost}`,
       undefined,
@@ -202,7 +208,7 @@ export const getVisaRequests = async (limit: number = 20, offset: number = 0) =>
     FROM trips t
     LEFT JOIN users u ON t.requester_id = u.userid
     LEFT JOIN file_uploads fu ON t.id = fu.trip_id
-    WHERE t.is_visa_request = TRUE AND t.status IN ('VISA_PENDING', 'VISA_UPLOADED')
+    WHERE t.is_visa_request = TRUE AND t.status IN ('${TRIP_STATUS.VISA_PENDING}', '${TRIP_STATUS.VISA_UPLOADED}')
     GROUP BY t.id, u.email
     ORDER BY t.created_at DESC
     LIMIT $1 OFFSET $2
@@ -218,7 +224,7 @@ export const getVisaRequests = async (limit: number = 20, offset: number = 0) =>
 };
 
 export const uploadVisa = async (tripId: number, cost: number, user: any) => {
-  await pool.query(`UPDATE trips SET status = $1, total_cost = $2 WHERE id = $3`, ['VISA_UPLOADED', cost, tripId]);
+  await pool.query(`UPDATE trips SET status = $1, total_cost = $2 WHERE id = $3`, [TRIP_STATUS.VISA_UPLOADED, cost, tripId]);
 
   const trip = await pool.query('SELECT * FROM trips WHERE id = $1', [tripId]);
   const requester = await pool.query('SELECT email FROM users WHERE userid = $1', [trip.rows[0].requester_id]);
@@ -226,7 +232,7 @@ export const uploadVisa = async (tripId: number, cost: number, user: any) => {
   if (requester.rows.length) {
     sendTripNotificationEmail(
       requester.rows[0].email,
-      'Visa Uploaded',
+      EMAIL_SUBJECTS.VISA_UPLOADED,
       trip.rows[0],
       'Your Visa has been processed and uploaded.',
       undefined,
@@ -257,8 +263,8 @@ export const getTripDetails = async (tripId: number, user: any) => {
   // Check if user can view
   const canView =
     tripData.requester_id === user.userid ||
-    user.role === 'travel_admin' ||
-    user.role === 'super_admin' ||
+    user.role === USER_ROLES.TRAVEL_ADMIN ||
+    user.role === USER_ROLES.SUPER_ADMIN ||
     // Check if user is an approver for this trip
     (await pool.query('SELECT 1 FROM approvals WHERE trip_id = $1 AND approver_id = $2', [tripId, user.id])).rows.length > 0;
 
@@ -297,7 +303,7 @@ export const updateTripOption = async (tripId: number, optionText: string, user:
   // 3. Create Approval Record
   if (approverId) {
     // Determine role purely based on status now
-    const approverRole = status === 'RM_PENDING' ? 'reporting_manager' : 'travel_admin';
+    const approverRole = status === TRIP_STATUS.RM_PENDING ? USER_ROLES.REPORTING_MANAGER : USER_ROLES.TRAVEL_ADMIN;
     await pool.query(`INSERT INTO approvals (trip_id, approver_id, approver_role) VALUES ($1, $2, $3)`, [tripId, approverId, approverRole]);
 
     // 4. Send Email to Approver
@@ -307,7 +313,7 @@ export const updateTripOption = async (tripId: number, optionText: string, user:
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       sendTripNotificationEmail(
         approverUser.rows[0].email,
-        'New Trip Approval Required',
+        EMAIL_SUBJECTS.NEW_APPROVAL_REQUIRED,
         trip.rows[0],
         `Requester has selected an option via MMT. Please review.\nSelected: ${optionText}\nEst. Cost: ${cost ? cost : 'N/A'}\n\nPayload Track: RM=False, TA=False`,
         undefined,
@@ -327,7 +333,7 @@ export const updateTripOption = async (tripId: number, optionText: string, user:
 export const closeTrip = async (tripId: number, user: any) => {
   const trip = await pool.query('SELECT * FROM trips WHERE id = $1', [tripId]);
   if (trip.rows.length && trip.rows[0].requester_id === user.userid) {
-    await pool.query(`UPDATE trips SET status = $1, closed_at = NOW() WHERE id = $2`, ['CLOSED', tripId]);
+    await pool.query(`UPDATE trips SET status = $1, closed_at = NOW() WHERE id = $2`, [TRIP_STATUS.CLOSED, tripId]);
   }
 };
 
@@ -343,7 +349,7 @@ export const rescheduleTrip = async (tripId: number, updatedItineraries: Itinera
     throw new Error('Unauthorized: You can only reschedule your own trips');
   }
 
-  if (tripData.status !== 'BOOKED') {
+  if (tripData.status !== TRIP_STATUS.BOOKED) {
     throw new Error('Only BOOKED trips can be rescheduled');
   }
 
@@ -355,7 +361,7 @@ export const rescheduleTrip = async (tripId: number, updatedItineraries: Itinera
     // Delete previous receipt and travel options files
     const filesToDelete = await client.query(
       'SELECT filepath FROM file_uploads WHERE trip_id = $1 AND file_type IN ($2, $3)',
-      [tripId, 'receipts', 'travel_options']
+      [tripId, FILE_TYPES.RECEIPTS, FILE_TYPES.TRAVEL_OPTIONS]
     );
 
     // Delete files from file system
@@ -375,7 +381,7 @@ export const rescheduleTrip = async (tripId: number, updatedItineraries: Itinera
     // Delete receipt and travel options records from database
     await client.query(
       'DELETE FROM file_uploads WHERE trip_id = $1 AND file_type IN ($2, $3)',
-      [tripId, 'receipts', 'travel_options']
+      [tripId, FILE_TYPES.RECEIPTS, FILE_TYPES.TRAVEL_OPTIONS]
     );
 
     // Update itineraries (only dates and times)
@@ -440,7 +446,7 @@ export const rescheduleTrip = async (tripId: number, updatedItineraries: Itinera
         booked_at = NULL,
         option_selected = NULL
        WHERE id = $2`,
-      ['APPROVED', tripId]
+      [TRIP_STATUS.APPROVED, tripId]
     );
 
     await client.query('COMMIT');
@@ -448,12 +454,12 @@ export const rescheduleTrip = async (tripId: number, updatedItineraries: Itinera
     // Send email notification to Travel Admin
     setImmediate(async () => {
       try {
-        const adminResult = await pool.query('SELECT email FROM users WHERE role = $1 LIMIT 1', ['travel_admin']);
+        const adminResult = await pool.query('SELECT email FROM users WHERE role = $1 LIMIT 1', [USER_ROLES.TRAVEL_ADMIN]);
         if (adminResult.rows.length > 0) {
           const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
           sendTripNotificationEmail(
             adminResult.rows[0].email,
-            `Trip Rescheduled - ${tripData.reference_no}`,
+            `${EMAIL_SUBJECTS.TRIP_RESCHEDULED} - ${tripData.reference_no}`,
             tripData,
             `Requester has rescheduled their trip. Please review and upload new travel options.`,
             undefined,
@@ -521,7 +527,7 @@ export const generateExcelForBookedTrips = async (startDate?: string, endDate?: 
     LEFT JOIN users u ON t.requester_id = u.userid
     LEFT JOIN approvals a ON t.id = a.trip_id
     LEFT JOIN users au ON a.approver_id = au.id
-    WHERE t.status = 'BOOKED'
+    WHERE t.status = '${TRIP_STATUS.BOOKED}'
   `;
 
   const params: any[] = [];
@@ -592,7 +598,7 @@ export const autoCloseTrips = async () => {
         SELECT t.id, t.reference_no, json_agg(it.details) as itineraries
         FROM trips t
         JOIN itineraries it ON t.id = it.trip_id
-        WHERE t.status = 'BOOKED'
+        WHERE t.status = '${TRIP_STATUS.BOOKED}'
         GROUP BY t.id
       `);
 
@@ -625,7 +631,7 @@ export const autoCloseTrips = async () => {
         // If trip has dates and the last date is in the past (< today)
         if (maxDate && maxDate < today) {
           console.log(`Auto-closing trip ${trip.reference_no} (ID: ${trip.id}). Max Date: ${maxDate.toDateString()}`);
-          await client.query(`UPDATE trips SET status = 'CLOSED', closed_at = NOW(), updated_at = NOW() WHERE id = $1`, [trip.id]);
+          await client.query(`UPDATE trips SET status = '${TRIP_STATUS.CLOSED}', closed_at = NOW(), updated_at = NOW() WHERE id = $1`, [trip.id]);
         }
       }
 
@@ -680,7 +686,7 @@ export const deleteUser = async (id: number) => {
 };
 
 export const getKPIs = async (user: any) => {
-  const isAdmin = user.role === 'super_admin' || user.role === 'travel_admin';
+  const isAdmin = user.role === USER_ROLES.SUPER_ADMIN || user.role === USER_ROLES.TRAVEL_ADMIN;
 
   let pendingRes, myTripsRes, activeTripsRes, recentTrips, recentApprovals;
   let nextTripRes, statusStatsRes, annualSpendRes;
@@ -692,7 +698,7 @@ export const getKPIs = async (user: any) => {
     activeTripsRes = await pool.query(`
       SELECT COUNT(*) as count
       FROM trips
-      WHERE status NOT IN ('CANCELLED', 'REJECTED', 'CLOSED', 'DRAFT')
+      WHERE status NOT IN ('${TRIP_STATUS.CANCELLED}', '${TRIP_STATUS.REJECTED}', '${TRIP_STATUS.CLOSED}', '${TRIP_STATUS.DRAFT}')
     `);
 
     // Recent activity: recent trips and approvals in the system
@@ -736,7 +742,7 @@ export const getKPIs = async (user: any) => {
     // For admin dashboard, maybe showing "Upcoming Trips" across org is too much for a single card.
     // Let's query for ANY upcoming booked trip
     nextTripRes = await pool.query(`
-      SELECT * FROM trips WHERE status = 'BOOKED' AND expected_journey_date >= CURRENT_DATE ORDER BY expected_journey_date ASC LIMIT 1
+      SELECT * FROM trips WHERE status = '${TRIP_STATUS.BOOKED}' AND expected_journey_date >= CURRENT_DATE ORDER BY expected_journey_date ASC LIMIT 1
     `);
 
     statusStatsRes = await pool.query('SELECT status, COUNT(*) as count FROM trips GROUP BY status');
@@ -745,7 +751,7 @@ export const getKPIs = async (user: any) => {
     annualSpendRes = await pool.query(`
       SELECT SUM(total_cost) as total 
       FROM trips 
-      WHERE status = 'BOOKED' 
+      WHERE status = '${TRIP_STATUS.BOOKED}' 
     `);
   } else {
     // User-specific KPIs
@@ -755,7 +761,7 @@ export const getKPIs = async (user: any) => {
       SELECT COUNT(*) as count
       FROM trips
       WHERE requester_id = $1
-        AND status NOT IN ('CANCELLED', 'REJECTED', 'CLOSED', 'DRAFT')
+        AND status NOT IN ('${TRIP_STATUS.CANCELLED}', '${TRIP_STATUS.REJECTED}', '${TRIP_STATUS.CLOSED}', '${TRIP_STATUS.DRAFT}')
     `, [user.userid]);
 
     // Recent Activity Feed

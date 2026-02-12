@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { APP_CONFIG, EXTERNAL_LINKS, TRIP_TYPES, ITINERARY_TYPES } from '../constants';
 import {
   Container,
   Typography,
@@ -48,7 +49,7 @@ import TrainStationAutocomplete from '../components/TrainStationAutocomplete';
 
 interface ItineraryItem {
   id: string;
-  type: 'flight' | 'hotel' | 'car' | 'train';
+  type: string; // Refactored to string to accept constants, or could use typeof ITINERARY_TYPES[keyof typeof ITINERARY_TYPES]
   details: any;
 }
 
@@ -60,7 +61,7 @@ const NewRequest: React.FC = () => {
   // Form State
   const [activeStep, setActiveStep] = useState(0);
   const [tripName, setTripName] = useState('');
-  const [travelType, setTravelType] = useState<'Domestic' | 'International'>('Domestic');
+  const [travelType, setTravelType] = useState<string>(TRIP_TYPES.DOMESTIC);
   const [destinationCountry, setDestinationCountry] = useState('');
   const [visaRequired, setVisaRequired] = useState<boolean | ''>('');
   const [businessPurpose, setBusinessPurpose] = useState('');
@@ -108,9 +109,9 @@ const NewRequest: React.FC = () => {
 
   // ----------------------------------------------------------------------
 
-  const addItinerary = (type: 'flight' | 'hotel' | 'car' | 'train') => {
+  const addItinerary = (type: string) => {
     // For international travel, require destination country before adding flights
-    if (type === 'flight' && travelType === 'International' && !destinationCountry) {
+    if (type === ITINERARY_TYPES.FLIGHT && travelType === TRIP_TYPES.INTERNATIONAL && !destinationCountry) {
       toast.error('Please select a destination country first');
       return;
     }
@@ -148,7 +149,7 @@ const NewRequest: React.FC = () => {
 
     const tripData = {
       tripName: `Visa Request - ${visaCountry}`,
-      travelType: 'International',
+      travelType: TRIP_TYPES.INTERNATIONAL,
       destinationCountry: visaCountry,
       visaRequired: true,
       businessPurpose: visaPurpose,
@@ -176,7 +177,7 @@ const NewRequest: React.FC = () => {
       return;
     }
 
-    if (travelType === 'International' && (!destinationCountry || visaRequired === '')) {
+    if (travelType === TRIP_TYPES.INTERNATIONAL && (!destinationCountry || visaRequired === '')) {
       toast.error('Please complete international travel details');
       return;
     }
@@ -185,8 +186,8 @@ const NewRequest: React.FC = () => {
     const tripData = {
       tripName,
       travelType,
-      destinationCountry: travelType === 'International' ? destinationCountry : '',
-      visaRequired: travelType === 'International' ? (visaRequired === true) : false,
+      destinationCountry: travelType === TRIP_TYPES.INTERNATIONAL ? destinationCountry : '',
+      visaRequired: travelType === TRIP_TYPES.INTERNATIONAL ? (visaRequired === true) : false,
       businessPurpose,
       itineraries,
       intent
@@ -206,7 +207,7 @@ const NewRequest: React.FC = () => {
             const details = it.details;
             let contextItem: any = { type: it.type };
 
-            if (it.type === 'flight') {
+            if (it.type === ITINERARY_TYPES.FLIGHT) {
               contextItem = {
                 ...contextItem,
                 tripType: details.tripType,
@@ -218,7 +219,7 @@ const NewRequest: React.FC = () => {
                 seatPreference: details.seatPreference,
                 mealPreference: details.mealPreference
               };
-            } else if (it.type === 'hotel') {
+            } else if (it.type === ITINERARY_TYPES.HOTEL) {
               contextItem = {
                 ...contextItem,
                 location: details.location?.cityName || details.location,
@@ -227,7 +228,7 @@ const NewRequest: React.FC = () => {
                 checkoutDate: details.checkoutDate,
                 checkoutTime: details.checkoutTime
               };
-            } else if (it.type === 'car') {
+            } else if (it.type === ITINERARY_TYPES.CAR) {
               contextItem = {
                 ...contextItem,
                 pickupLocation: details.pickupLocation?.cityName || details.pickupLocation,
@@ -237,7 +238,7 @@ const NewRequest: React.FC = () => {
                 carType: details.carType,
                 fuelType: details.fuelType
               };
-            } else if (it.type === 'train') {
+            } else if (it.type === ITINERARY_TYPES.TRAIN) {
               contextItem = {
                 ...contextItem,
                 departFrom: details.departFrom?.stnCode || details.departFrom,
@@ -254,7 +255,7 @@ const NewRequest: React.FC = () => {
           
           // Construct URL
           const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
-          const mmtUrl = `${baseUrl}:4000/?trip_id=${tripId}&redirect_url=${baseUrl}:3000/mmt-callback&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
+          const mmtUrl = `${baseUrl}:${APP_CONFIG.MMT_PORT}/?trip_id=${tripId}&redirect_url=${baseUrl}:${APP_CONFIG.FRONTEND_PORT}${EXTERNAL_LINKS.MMT_REDIRECT_PATH}&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
           
           setTimeout(() => {
               window.open(mmtUrl, '_blank');
@@ -267,7 +268,7 @@ const NewRequest: React.FC = () => {
 
       // Reset form (though navigation happens)
       setTripName('');
-      setTravelType('Domestic');
+      setTravelType(TRIP_TYPES.DOMESTIC);
       setDestinationCountry('');
       setVisaRequired('');
       setBusinessPurpose('');
@@ -297,14 +298,14 @@ const NewRequest: React.FC = () => {
         for (const item of itineraries) {
             if (!item.details) return false;
             
-            if (item.type === 'flight') {
+            if (item.type === ITINERARY_TYPES.FLIGHT) {
                 if (!item.details.departFrom || !item.details.arriveAt || !item.details.departureDate || !item.details.departTime) return false;
                 if (item.details.tripType === 'roundtrip' && (!item.details.returnDate || !item.details.returnTime)) return false;
-            } else if (item.type === 'hotel') {
+            } else if (item.type === ITINERARY_TYPES.HOTEL) {
                 if (!item.details.location || !item.details.checkinDate || !item.details.checkinTime || !item.details.checkoutDate || !item.details.checkoutTime) return false;
-            } else if (item.type === 'car') {
+            } else if (item.type === ITINERARY_TYPES.CAR) {
                 if (!item.details.pickupLocation || !item.details.dropoffLocation || !item.details.pickupDate || !item.details.pickupTime) return false;
-            } else if (item.type === 'train') {
+            } else if (item.type === ITINERARY_TYPES.TRAIN) {
                 if (!item.details.departFrom || !item.details.arriveAt || !item.details.departureDate) return false;
             }
         }
@@ -343,7 +344,7 @@ const NewRequest: React.FC = () => {
     if (window.confirm('Are you sure you want to clear the fields for this step?')) {
         if (activeStep === 0) {
             setTripName('');
-            setTravelType('Domestic');
+            setTravelType(TRIP_TYPES.DOMESTIC);
             setDestinationCountry('');
             setVisaRequired('');
             setBusinessPurpose('');
@@ -443,19 +444,19 @@ const NewRequest: React.FC = () => {
                                     <RadioGroup
                                     row
                                     value={travelType}
-                                    onChange={(e) => setTravelType(e.target.value as 'Domestic' | 'International')}
+                                    onChange={(e) => setTravelType(e.target.value)}
                                     >
-                                        <Card variant="outlined" sx={{ mr: 2, mb: 1, border: travelType === 'Domestic' ? `2px solid ${theme.palette.primary.main}` : '1px solid #ddd' }}>
+                                        <Card variant="outlined" sx={{ mr: 2, mb: 1, border: travelType === TRIP_TYPES.DOMESTIC ? `2px solid ${theme.palette.primary.main}` : '1px solid #ddd' }}>
                                             <FormControlLabel 
-                                                value="Domestic" 
+                                                value={TRIP_TYPES.DOMESTIC} 
                                                 control={<Radio />} 
                                                 label="Domestic" 
                                                 sx={{ m: 0, px: 2, py: 1 }}
                                             />
                                         </Card>
-                                        <Card variant="outlined" sx={{ mb: 1, border: travelType === 'International' ? `2px solid ${theme.palette.primary.main}` : '1px solid #ddd' }}>
+                                        <Card variant="outlined" sx={{ mb: 1, border: travelType === TRIP_TYPES.INTERNATIONAL ? `2px solid ${theme.palette.primary.main}` : '1px solid #ddd' }}>
                                             <FormControlLabel 
-                                                value="International" 
+                                                value={TRIP_TYPES.INTERNATIONAL} 
                                                 control={<Radio />} 
                                                 label="International" 
                                                 sx={{ m: 0, px: 2, py: 1 }}
@@ -465,7 +466,7 @@ const NewRequest: React.FC = () => {
                                 </FormControl>
                             </Grid>
 
-                            {travelType === 'International' && (
+                            {travelType === TRIP_TYPES.INTERNATIONAL && (
                                 <Grid size={{ xs: 12 }} container spacing={3}>
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <Autocomplete
@@ -526,10 +527,10 @@ const NewRequest: React.FC = () => {
             <Box>
                 <Grid container spacing={2} sx={{ mb: 4 }}>
                     {[
-                        { type: 'flight', icon: <FlightTakeoff />, label: 'Add Flight', color: 'primary' },
-                        { type: 'hotel', icon: <Hotel />, label: 'Add Hotel', color: 'secondary' },
-                        // { type: 'car', icon: <DirectionsCar />, label: 'Add Car', color: 'warning' },
-                        { type: 'train', icon: <Train />, label: 'Add Train', color: 'info' },
+                        { type: ITINERARY_TYPES.FLIGHT, icon: <FlightTakeoff />, label: 'Add Flight', color: 'primary' },
+                        { type: ITINERARY_TYPES.HOTEL, icon: <Hotel />, label: 'Add Hotel', color: 'secondary' },
+                        // { type: ITINERARY_TYPES.CAR, icon: <DirectionsCar />, label: 'Add Car', color: 'warning' },
+                        { type: ITINERARY_TYPES.TRAIN, icon: <Train />, label: 'Add Train', color: 'info' },
                     ].map((btn) => (
                         <Grid size={{ xs: 6, md: 4 }} key={btn.type}>
                             <AnimatedButton
@@ -569,7 +570,7 @@ const NewRequest: React.FC = () => {
                                 index={index}
                                 onRemove={() => removeItinerary(index)}
                             >
-                                {item.type === 'flight' && (
+                                {item.type === ITINERARY_TYPES.FLIGHT && (
                                     <FlightItineraryForm
                                         item={item}
                                         index={index}
@@ -579,7 +580,7 @@ const NewRequest: React.FC = () => {
                                         validationTriggered={validationTriggered}
                                     />
                                 )}
-                                {item.type === 'hotel' && (
+                                {item.type === ITINERARY_TYPES.HOTEL && (
                                     <HotelItineraryForm 
                                         item={item} 
                                         index={index} 
@@ -589,10 +590,10 @@ const NewRequest: React.FC = () => {
                                         destinationCountry={destinationCountry}
                                     />
                                 )}
-                                {item.type === 'car' && (
+                                {item.type === ITINERARY_TYPES.CAR && (
                                     <CarItineraryForm item={item} index={index} onUpdate={updateItinerary} validationTriggered={validationTriggered} />
                                 )}
-                                {item.type === 'train' && (
+                                {item.type === ITINERARY_TYPES.TRAIN && (
                                     <TrainItineraryForm item={item} index={index} onUpdate={updateItinerary} validationTriggered={validationTriggered} />
                                 )}
                             </ItineraryCard>
@@ -636,7 +637,7 @@ const NewRequest: React.FC = () => {
                                 />
                              </Box>
 
-                             {travelType === 'International' && (
+                             {travelType === TRIP_TYPES.INTERNATIONAL && (
                                 <>
                                     <Box>
                                         <Typography variant="subtitle2" sx={{ opacity: 0.7, mb: 0.5 }}>Destination</Typography>

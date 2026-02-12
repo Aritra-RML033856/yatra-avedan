@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { APP_CONFIG, EXTERNAL_LINKS, TRIP_STATUS, ITINERARY_TYPES, FILE_TYPES } from '../constants';
 import {
   Box,
   Card,
@@ -123,30 +125,30 @@ const MyTrips: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'APPROVED': return 'success';
-      case 'SELECT_OPTION': return 'info';
-      case 'OPTION_SELECTED': return 'warning';
-      case 'BOOKED': return 'primary';
-      case 'CLOSED': return 'default';
-      case 'VISA_PENDING': return 'warning';
-      case 'VISA_UPLOADED': return 'success';
-      case 'CANCELLATION_PENDING': return 'warning';
-      case 'CANCELLED': return 'error';
+      case TRIP_STATUS.APPROVED: return 'success';
+      case TRIP_STATUS.SELECT_OPTION: return 'info';
+      case TRIP_STATUS.OPTION_SELECTED: return 'warning';
+      case TRIP_STATUS.BOOKED: return 'primary';
+      case TRIP_STATUS.CLOSED: return 'default';
+      case TRIP_STATUS.VISA_PENDING: return 'warning';
+      case TRIP_STATUS.VISA_UPLOADED: return 'success';
+      case TRIP_STATUS.CANCELLATION_PENDING: return 'warning';
+      case TRIP_STATUS.CANCELLED: return 'error';
       default: return 'info';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'APPROVED': return <DoneIcon />;
-      case 'SELECT_OPTION': return <ScheduleIcon />;
-      case 'OPTION_SELECTED': return <BusinessCenterIcon />;
-      case 'RM_PENDING': return <AssignmentIcon />;
-      case 'TRAVEL_ADMIN_PENDING': return <AssignmentIcon />;
-      case 'BOOKED': return <ReceiptIcon />;
-      case 'CLOSED': return <CheckCircleIcon />;
-      case 'VISA_PENDING': return <AssignmentIcon />;
-      case 'VISA_UPLOADED': return <CheckCircleIcon />;
+      case TRIP_STATUS.APPROVED: return <DoneIcon />;
+      case TRIP_STATUS.SELECT_OPTION: return <ScheduleIcon />;
+      case TRIP_STATUS.OPTION_SELECTED: return <BusinessCenterIcon />;
+      case TRIP_STATUS.RM_PENDING: return <AssignmentIcon />;
+      case TRIP_STATUS.TRAVEL_ADMIN_PENDING: return <AssignmentIcon />;
+      case TRIP_STATUS.BOOKED: return <ReceiptIcon />;
+      case TRIP_STATUS.CLOSED: return <CheckCircleIcon />;
+      case TRIP_STATUS.VISA_PENDING: return <AssignmentIcon />;
+      case TRIP_STATUS.VISA_UPLOADED: return <CheckCircleIcon />;
       default: return <AssignmentIcon />;
     }
   };
@@ -176,7 +178,8 @@ const MyTrips: React.FC = () => {
 
   const isTripCancellable = (trip: Trip) => {
     // Check if trip is already cancelled or closed
-    if (['CANCELLED', 'CANCELLATION_PENDING', 'CLOSED', 'REJECTED'].includes(trip.status)) {
+    // Check if trip is already cancelled or closed
+    if ([TRIP_STATUS.CANCELLED, TRIP_STATUS.CANCELLATION_PENDING, TRIP_STATUS.CLOSED, TRIP_STATUS.REJECTED].includes(trip.status)) {
       return false;
     }
     
@@ -184,16 +187,16 @@ const MyTrips: React.FC = () => {
     let lastDate: Date | null = null;
     for (const it of trip.itineraries) {
       let dateStr = null;
-      if (it.type === 'flight') {
+      if (it.type === ITINERARY_TYPES.FLIGHT) {
          // Use returnDate if exists, else departureDate
          dateStr = it.details.returnDate || it.details.departureDate;
-      } else if (it.type === 'hotel') {
+      } else if (it.type === ITINERARY_TYPES.HOTEL) {
          // Calculate check-out? Or just use checkin + duration? Assuming checkin for now as "journey date"
          // Requirement says "last journey date". Let's stick to start dates if end dates absent.
          // Actually hotel checkin is safer or maybe checkin + nights logic in backend. 
          // For simplicity and robustness, let's look for explicit dates available.
          dateStr = it.details.checkinDate;
-      } else if (it.type === 'train') {
+      } else if (it.type === ITINERARY_TYPES.TRAIN) {
          dateStr = it.details.departDate || it.details.departureDate; // check fields
       }
       
@@ -251,7 +254,7 @@ const MyTrips: React.FC = () => {
       const details = it.details;
       let contextItem: any = { type: it.type };
 
-      if (it.type === 'flight') {
+      if (it.type === ITINERARY_TYPES.FLIGHT) {
         contextItem = {
           ...contextItem,
           tripType: details.tripType,
@@ -263,7 +266,7 @@ const MyTrips: React.FC = () => {
           seatPreference: details.seatPreference,
           mealPreference: details.mealPreference
         };
-      } else if (it.type === 'hotel') {
+      } else if (it.type === ITINERARY_TYPES.HOTEL) {
         contextItem = {
           ...contextItem,
           location: details.location?.cityName || details.location,
@@ -272,7 +275,7 @@ const MyTrips: React.FC = () => {
           checkoutDate: details.checkoutDate,
           checkoutTime: details.checkoutTime
         };
-      } else if (it.type === 'car') {
+      } else if (it.type === ITINERARY_TYPES.CAR) {
         contextItem = {
           ...contextItem,
           pickupLocation: details.pickupLocation?.cityName || details.pickupLocation,
@@ -282,7 +285,7 @@ const MyTrips: React.FC = () => {
           carType: details.carType,
           fuelType: details.fuelType
         };
-      } else if (it.type === 'train') {
+      } else if (it.type === ITINERARY_TYPES.TRAIN) {
         contextItem = {
           ...contextItem,
           departFrom: details.departFrom?.stnCode || details.departFrom,
@@ -298,8 +301,9 @@ const MyTrips: React.FC = () => {
     const contextStr = encodeURIComponent(JSON.stringify(context));
     
     // Construct URL
+    // Construct URL
     const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
-    const mmtUrl = `${baseUrl}:4000/?trip_id=${trip.id}&redirect_url=${baseUrl}:3000/mmt-callback&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
+    const mmtUrl = `${baseUrl}:${APP_CONFIG.MMT_PORT}/?trip_id=${trip.id}&redirect_url=${baseUrl}:${APP_CONFIG.FRONTEND_PORT}${EXTERNAL_LINKS.MMT_REDIRECT_PATH}&emp_id=${user?.userid || 'EMP001'}&rm=false&ta=false&context=${contextStr}`;
     
     // Open MMT
     window.open(mmtUrl, '_blank');
@@ -354,7 +358,7 @@ const MyTrips: React.FC = () => {
                 {/* Trip Info */}
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Created: {new Date(trip.created_at).toLocaleString()}
+                    Created: {formatDate(trip.created_at, true)}
                   </Typography>
                   {trip.option_selected && (
                     <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
@@ -365,7 +369,7 @@ const MyTrips: React.FC = () => {
                   )}
                   {trip.is_visa_request && trip.expected_journey_date && (
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      <strong>Expected Journey Date:</strong> {new Date(trip.expected_journey_date).toLocaleDateString()}
+                      <strong>Expected Journey Date:</strong> {formatDate(trip.expected_journey_date)}
                     </Typography>
                   )}
                 </Box>
@@ -381,7 +385,7 @@ const MyTrips: React.FC = () => {
                     View Details
                   </Button>
 
-                  {trip.status === 'SELECT_OPTION' && (
+                  {trip.status === TRIP_STATUS.SELECT_OPTION && (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                        <Button
                           variant="contained"
@@ -396,7 +400,7 @@ const MyTrips: React.FC = () => {
                     </Box>
                   )}
 
-                  {trip.status === 'BOOKED' && (
+                  {trip.status === TRIP_STATUS.BOOKED && (
                     <Button
                       variant="outlined"
                       size="small"
@@ -431,14 +435,14 @@ const MyTrips: React.FC = () => {
                     </Typography>
 
                     {/* Visa Document */}
-                    {trip.files.filter(f => f.file_type === 'visa').length > 0 && (
+                    {trip.files.filter(f => f.file_type === FILE_TYPES.VISA).length > 0 && (
                       <Box sx={{ mb: 2 }}>
                          <Typography variant="body2" color="success.main" sx={{ mb: 1, fontWeight: 'medium' }}>
                            🛂 Visa Document:
                          </Typography>
                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                             {trip.files
-                              .filter(f => f.file_type === 'visa')
+                              .filter(f => f.file_type === FILE_TYPES.VISA)
                               .map((file, index) => (
                                 <Chip
                                   key={index}
@@ -455,14 +459,14 @@ const MyTrips: React.FC = () => {
                     )}
 
                     {/* Travel Options (Images) */}
-                    {trip.files.filter(f => f.file_type === 'travel_options').length > 0 && (
+                    {trip.files.filter(f => f.file_type === FILE_TYPES.TRAVEL_OPTIONS).length > 0 && (
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="primary" sx={{ mb: 1, fontWeight: 'medium' }}>
                           📸 Travel Options:
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                           {trip.files
-                            .filter(f => f.file_type === 'travel_options')
+                            .filter(f => f.file_type === FILE_TYPES.TRAVEL_OPTIONS)
                            // ... map logic ...
                             .map((file, index) => (
                               <Box key={index} sx={{ display: 'inline-block' }}>
@@ -507,14 +511,14 @@ const MyTrips: React.FC = () => {
                     )}
 
                     {/* Receipts/Other Files (Download Links) */}
-                    {trip.files.filter(f => f.file_type !== 'travel_options' && f.file_type !== 'visa').length > 0 && (
+                    {trip.files.filter(f => f.file_type !== FILE_TYPES.TRAVEL_OPTIONS && f.file_type !== FILE_TYPES.VISA).length > 0 && (
                       <Box>
                         <Typography variant="body2" color="primary" sx={{ mb: 1, fontWeight: 'medium' }}>
                           📄 Receipts & Documents:
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                           {trip.files
-                            .filter(f => f.file_type !== 'travel_options' && f.file_type !== 'visa')
+                            .filter(f => f.file_type !== FILE_TYPES.TRAVEL_OPTIONS && f.file_type !== FILE_TYPES.VISA)
                             .map((file, index) => (
                               <Chip
                                 key={index}
@@ -589,18 +593,18 @@ const MyTrips: React.FC = () => {
                     {selectedTrip.itineraries.map((itinerary, index) => (
                       <Paper elevation={1} sx={{ p: 2 }} key={index}>
                         <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {itinerary.type === 'flight' && <FlightTakeoffIcon />}
-                          {itinerary.type === 'hotel' && <HotelIcon />}
-                          {itinerary.type === 'car' && <DriveEtaIcon />}
-                          {itinerary.type === 'train' && <TrainIcon />}
+                          {itinerary.type === ITINERARY_TYPES.FLIGHT && <FlightTakeoffIcon />}
+                          {itinerary.type === ITINERARY_TYPES.HOTEL && <HotelIcon />}
+                          {itinerary.type === ITINERARY_TYPES.CAR && <DriveEtaIcon />}
+                          {itinerary.type === ITINERARY_TYPES.TRAIN && <TrainIcon />}
                           {itinerary.type.toUpperCase()}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {itinerary.type === 'hotel' ? (
+                          {itinerary.type === ITINERARY_TYPES.HOTEL ? (
                             `Location: ${(typeof itinerary.details.location === 'object' ? (itinerary.details.location.cityName || JSON.stringify(itinerary.details.location)) : itinerary.details.location) || ''}`
-                          ) : itinerary.type === 'car' ? (
+                          ) : itinerary.type === ITINERARY_TYPES.CAR ? (
                             `From: ${(typeof itinerary.details.pickupLocation === 'object' ? (itinerary.details.pickupLocation.cityName || JSON.stringify(itinerary.details.pickupLocation)) : itinerary.details.pickupLocation) || ''} → To: ${(typeof itinerary.details.dropoffLocation === 'object' ? (itinerary.details.dropoffLocation.cityName || JSON.stringify(itinerary.details.dropoffLocation)) : itinerary.details.dropoffLocation) || ''}`
-                          ) : itinerary.type === 'train' ? (
+                          ) : itinerary.type === ITINERARY_TYPES.TRAIN ? (
                             `From: ${(typeof itinerary.details.departFrom === 'object' ? (itinerary.details.departFrom.stnName || itinerary.details.departFrom.stnCode) : itinerary.details.departFrom) || ''} → To: ${(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.stnName || itinerary.details.arriveAt.stnCode) : itinerary.details.arriveAt) || ''}`
                           ) : (
                              `From: ${(typeof itinerary.details.departFrom === 'object' ? (itinerary.details.departFrom.code || itinerary.details.departFrom.name) : itinerary.details.departFrom) || ''} → To: ${(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.code || itinerary.details.arriveAt.name) : itinerary.details.arriveAt) || ''}`
@@ -724,10 +728,10 @@ const MyTrips: React.FC = () => {
               {rescheduleItineraries.map((itinerary, index) => (
                 <Paper elevation={1} sx={{ p: 3, mb: 3 }} key={index}>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {itinerary.type === 'flight' && <FlightTakeoffIcon />}
-                    {itinerary.type === 'hotel' && <HotelIcon />}
-                    {itinerary.type === 'car' && <DriveEtaIcon />}
-                    {itinerary.type === 'train' && <TrainIcon />}
+                    {itinerary.type === ITINERARY_TYPES.FLIGHT && <FlightTakeoffIcon />}
+                    {itinerary.type === ITINERARY_TYPES.HOTEL && <HotelIcon />}
+                    {itinerary.type === ITINERARY_TYPES.CAR && <DriveEtaIcon />}
+                    {itinerary.type === ITINERARY_TYPES.TRAIN && <TrainIcon />}
                     {itinerary.type.toUpperCase()} {index + 1}
                   </Typography>
 
@@ -736,22 +740,22 @@ const MyTrips: React.FC = () => {
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       <strong>Current Details:</strong>
                     </Typography>
-                    {itinerary.type === 'flight' && (
+                    {itinerary.type === ITINERARY_TYPES.FLIGHT && (
                       <Typography variant="body2">
                         From: {itinerary.details.departFrom} → To: {itinerary.details.arriveAt}
                       </Typography>
                     )}
-                    {itinerary.type === 'hotel' && (
+                    {itinerary.type === ITINERARY_TYPES.HOTEL && (
                       <Typography variant="body2">
                         Location: {itinerary.details.location}
                       </Typography>
                     )}
-                    {itinerary.type === 'car' && (
+                    {itinerary.type === ITINERARY_TYPES.CAR && (
                       <Typography variant="body2">
                         From: {itinerary.details.pickupLocation} → To: {itinerary.details.dropoffLocation}
                       </Typography>
                     )}
-                    {itinerary.type === 'train' && (
+                    {itinerary.type === ITINERARY_TYPES.TRAIN && (
                       <Typography variant="body2">
                         From: {itinerary.details.departFrom} → To: {itinerary.details.arriveAt}
                       </Typography>
@@ -763,7 +767,7 @@ const MyTrips: React.FC = () => {
                     Editable Date/Time Fields:
                   </Typography>
 
-                  {itinerary.type === 'flight' && (
+                  {itinerary.type === ITINERARY_TYPES.FLIGHT && (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                       <TextField
                         sx={{ minWidth: 200, flex: 1 }}

@@ -21,6 +21,7 @@ import {
   ExpandLess,
   Edit,
 } from '@mui/icons-material';
+import { ITINERARY_TYPES } from '../constants';
 import { MotionBox, varFadeInUp } from './AnimatedComponents';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,7 +29,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface ItineraryCardProps {
   item: {
-    type: 'flight' | 'hotel' | 'car' | 'train';
+    id: string;
+    type: string;
     details: any;
   };
   index: number;
@@ -39,16 +41,11 @@ interface ItineraryCardProps {
 
 const getTypeConfig = (type: string) => {
   switch (type) {
-    case 'flight':
-      return { icon: <FlightTakeoff />, color: 'primary', label: 'Flight' };
-    case 'hotel':
-      return { icon: <Hotel />, color: 'secondary', label: 'Hotel' };
-    case 'car':
-      return { icon: <DirectionsCar />, color: 'warning', label: 'Car Rental' };
-    case 'train':
-      return { icon: <Train />, color: 'info', label: 'Train' };
-    default:
-      return { icon: <FlightTakeoff />, color: 'primary', label: 'Travel' };
+    case ITINERARY_TYPES.FLIGHT: return { icon: <FlightTakeoff />, color: 'primary', label: 'Flight' };
+    case ITINERARY_TYPES.HOTEL: return { icon: <Hotel />, color: 'secondary', label: 'Hotel' };
+    case ITINERARY_TYPES.CAR: return { icon: <DirectionsCar />, color: 'warning', label: 'Car Rental' };
+    case ITINERARY_TYPES.TRAIN: return { icon: <Train />, color: 'info', label: 'Train' };
+    default: return { icon: <FlightTakeoff />, color: 'primary', label: 'Travel' };
   }
 };
 

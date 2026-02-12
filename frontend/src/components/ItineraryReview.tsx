@@ -23,12 +23,13 @@ import {
   Person
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
+import { ITINERARY_TYPES } from '../constants';
 
 // ----------------------------------------------------------------------
 
 interface ItineraryReviewProps {
   item: {
-    type: 'flight' | 'hotel' | 'car' | 'train';
+    type: string;
     details: any;
   };
   index: number;
@@ -73,13 +74,13 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
 
   const getTypeConfig = (type: string) => {
     switch (type) {
-      case 'flight':
+      case ITINERARY_TYPES.FLIGHT:
         return { icon: <FlightTakeoff />, color: 'primary', label: 'Flight' };
-      case 'hotel':
+      case ITINERARY_TYPES.HOTEL:
         return { icon: <Hotel />, color: 'secondary', label: 'Hotel' };
-      case 'car':
+      case ITINERARY_TYPES.CAR:
         return { icon: <DirectionsCar />, color: 'warning', label: 'Car Rental' };
-      case 'train':
+      case ITINERARY_TYPES.TRAIN:
         return { icon: <Train />, color: 'info', label: 'Train' };
       default:
         return { icon: <FlightTakeoff />, color: 'primary', label: 'Travel' };
@@ -92,7 +93,7 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
   const formatDate = (dateString: string) => {
       if (!dateString) return '';
       try {
-          return dayjs(dateString).format('ddd, MMM D, YYYY');
+          return dayjs(dateString).format('DD-MM-YYYY');
       } catch (e) {
           return dateString;
       }
@@ -227,7 +228,7 @@ const ItineraryReview: React.FC<ItineraryReviewProps> = ({ item, index }) => {
                 </Grid>
               );
 
-          case 'train':
+          case ITINERARY_TYPES.TRAIN:
                 return (
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, sm: 6 }}>

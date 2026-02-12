@@ -1,6 +1,11 @@
 import pool from './database.js';
 import type { AuthUser } from './auth.js';
 import { sendTripNotificationEmail, prepareFileAttachments } from './email.js';
+import {
+  TRIP_STATUS,
+  USER_ROLES,
+  EMAIL_SUBJECTS
+} from './constants.js';
 
 export const getApprovalCounts = async (userId: number) => {
   const result = await pool.query(`
@@ -138,22 +143,22 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
   if (action === 'accept') {
-    if (trip.approver_role === 'reporting_manager') {
+    if (trip.approver_role === USER_ROLES.REPORTING_MANAGER) {
       // Reporting Manager Approved -> Go to Travel Admin
-      const travelAdmin = await pool.query('SELECT id, email FROM users WHERE role = $1 LIMIT 1', ['travel_admin']);
+      const travelAdmin = await pool.query('SELECT id, email FROM users WHERE role = $1 LIMIT 1', [USER_ROLES.TRAVEL_ADMIN]);
       if (travelAdmin.rows.length) {
         // Manager Approved: Update mmt_payload.rm_approved = true
         const currentPayload = trip.mmt_payload || {};
         currentPayload.rm_approved = true;
 
         await pool.query('UPDATE trips SET status = $1, mmt_payload = $2 WHERE id = $3',
-          ['TRAVEL_ADMIN_PENDING', JSON.stringify(currentPayload), trip.trip_id]);
+          [TRIP_STATUS.TRAVEL_ADMIN_PENDING, JSON.stringify(currentPayload), trip.trip_id]);
 
-        await pool.query('INSERT INTO approvals (trip_id, approver_id, approver_role) VALUES ($1, $2, $3)', [trip.trip_id, travelAdmin.rows[0].id, 'travel_admin']);
+        await pool.query('INSERT INTO approvals (trip_id, approver_id, approver_role) VALUES ($1, $2, $3)', [trip.trip_id, travelAdmin.rows[0].id, USER_ROLES.TRAVEL_ADMIN]);
 
         sendTripNotificationEmail(
           travelAdmin.rows[0].email,
-          trip.option_selected ? 'Trip Approval Required (MMT)' : 'Trip Approval Required',
+          trip.option_selected ? `${EMAIL_SUBJECTS.NEW_APPROVAL_REQUIRED} (MMT)` : EMAIL_SUBJECTS.NEW_APPROVAL_REQUIRED,
           trip,
           `RM Approved. Please Finalize.\n\nPayload Track: RM=True, TA=False`,
           undefined,
@@ -162,10 +167,10 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
         );
       } else {
         // Fallback if no TA exists (unlikely in prod but safe)
-        await pool.query('UPDATE trips SET status = $1 WHERE id = $2', ['APPROVED', trip.trip_id]);
+        await pool.query('UPDATE trips SET status = $1 WHERE id = $2', [TRIP_STATUS.APPROVED, trip.trip_id]);
       }
 
-    } else if (trip.approver_role === 'travel_admin') {
+    } else if (trip.approver_role === USER_ROLES.TRAVEL_ADMIN) {
       // Travel Admin approved
       if (trip.option_selected) {
         // MMT Flow: Trigger Booking
@@ -184,12 +189,12 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
 
 
         await pool.query('UPDATE trips SET status = $1, booked_at = NOW(), mmt_payload = $2 WHERE id = $3',
-          ['BOOKED', JSON.stringify(currentPayload), trip.trip_id]);
+          [TRIP_STATUS.BOOKED, JSON.stringify(currentPayload), trip.trip_id]);
 
         // Send Ticket/Invoice Emails (Simulated)
         sendTripNotificationEmail(
           requesterEmail,
-          'Trip Booking Confirmed (MMT)',
+          EMAIL_SUBJECTS.BOOKING_CONFIRMED_MMT,
           trip,
           `Your trip has been booked successfully via MMT. Tickets are attached.\n\nPayload Track: RM=True, TA=True`,
           undefined,
@@ -200,13 +205,13 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
         // Legacy Flow: Ready for options upload/manual processing
         // If Visa Request, maybe move to VISA_PENDING? assuming standard flow for now.
         const isVisaRequest = trip.is_visa_request || false;
-        const nextStatus = isVisaRequest ? 'VISA_PENDING' : 'APPROVED';
+        const nextStatus = isVisaRequest ? TRIP_STATUS.VISA_PENDING : TRIP_STATUS.APPROVED;
 
         await pool.query('UPDATE trips SET status = $1 WHERE id = $2', [nextStatus, trip.trip_id]);
 
         sendTripNotificationEmail(
           requesterEmail,
-          'Trip Approved',
+          EMAIL_SUBJECTS.TRIP_APPROVED,
           trip,
           'Travel Admin reviewed your request.',
           undefined,
@@ -217,10 +222,10 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
     }
     // Removed generic "Trip Progress Update" email for accept actions
   } else if (action === 'reject') {
-    await pool.query('UPDATE trips SET status = $1 WHERE id = $2', ['REJECTED', trip.trip_id]);
+    await pool.query('UPDATE trips SET status = $1 WHERE id = $2', [TRIP_STATUS.REJECTED, trip.trip_id]);
     sendTripNotificationEmail(
       requesterEmail,
-      'Trip Rejected',
+      EMAIL_SUBJECTS.TRIP_REJECTED,
       trip,
       'Trip rejected',
       undefined,
@@ -228,10 +233,10 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
       `${frontendUrl}/my-trips`
     );
   } else if (action === 'send_back') {
-    await pool.query('UPDATE trips SET status = $1 WHERE id = $2', ['EDIT', trip.trip_id]);
+    await pool.query('UPDATE trips SET status = $1 WHERE id = $2', [TRIP_STATUS.EDIT, trip.trip_id]);
     sendTripNotificationEmail(
       requesterEmail,
-      'Trip Sent Back for Edit',
+      EMAIL_SUBJECTS.TRIP_SENT_BACK,
       trip,
       'Please edit and resubmit',
       undefined,

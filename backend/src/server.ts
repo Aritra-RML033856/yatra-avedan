@@ -14,6 +14,7 @@ import { login, authenticate, changePassword } from './auth.js';
 import { createTrip, autoCloseTrips } from './trips.js';
 import { prepareFileAttachments, sendTripNotificationEmail } from './email.js';
 import locationsRouter from './routes/locations.js';
+import { USER_ROLES, TRIP_STATUS, FILE_TYPES, UPLOAD_PATHS, EMAIL_SUBJECTS } from './constants.js';
 
 // Auto-close trips scheduler (runs every hour)
 setInterval(() => {
@@ -27,9 +28,9 @@ setTimeout(() => {
 }, 5000);
 
 // Ensure upload directories exist
-const uploadsDir = path.join(process.cwd(), 'uploads');
-const travelOptionsDir = path.join(uploadsDir, 'travel_options');
-const receiptsDir = path.join(uploadsDir, 'receipts');
+const uploadsDir = path.join(process.cwd(), UPLOAD_PATHS.BASE);
+const travelOptionsDir = path.join(process.cwd(), UPLOAD_PATHS.TRAVEL_OPTIONS);
+const receiptsDir = path.join(process.cwd(), UPLOAD_PATHS.RECEIPTS);
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
@@ -80,8 +81,8 @@ const authMiddleware = (req: any, res: any, next: any) => {
 };
 
 // File upload middleware
-const travelOptionsUpload = multer({ dest: 'uploads/travel_options/' });
-const receiptsUpload = multer({ dest: 'uploads/receipts/' });
+const travelOptionsUpload = multer({ dest: UPLOAD_PATHS.TRAVEL_OPTIONS });
+const receiptsUpload = multer({ dest: UPLOAD_PATHS.RECEIPTS });
 
 // Static files
 app.use('/uploads', express.static('uploads'));
@@ -217,7 +218,7 @@ app.post('/api/approvals/:id', authMiddleware, async (req: any, res: any) => {
 });
 
 app.get('/api/trips/approved', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin') return res.status(403).json({ error: 'Unauthorized' });
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
   const { getApprovedTrips } = await import('./trips.js');
 
   const limit = parseInt(req.query.limit as string) || 20;
@@ -228,7 +229,7 @@ app.get('/api/trips/approved', authMiddleware, async (req: any, res: any) => {
 });
 
 app.get('/api/trips/cancelled', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Unauthorized' });
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
   const { getCancelledTripsForAdmin } = await import('./trips.js');
   const limit = parseInt(req.query.limit as string) || 20;
   const offset = parseInt(req.query.offset as string) || 0;
@@ -236,7 +237,7 @@ app.get('/api/trips/cancelled', authMiddleware, async (req: any, res: any) => {
 });
 
 app.post('/api/trips/:id/options', authMiddleware, travelOptionsUpload.array('files', 10), async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin') return res.status(403).json({ error: 'Unauthorized' });
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
 
   const tripId = parseInt(req.params.id);
   const fileRecords: any[] = [];
@@ -244,7 +245,7 @@ app.post('/api/trips/:id/options', authMiddleware, travelOptionsUpload.array('fi
   // Insert files into database and collect file records
   for (const file of req.files as any) {
     await pool.query('INSERT INTO file_uploads (trip_id, uploaded_by, file_type, filepath, filename) VALUES ($1,$2,$3,$4,$5)',
-      [tripId, req.user.id, 'travel_options', file.path, file.originalname]);
+      [tripId, req.user.id, FILE_TYPES.TRAVEL_OPTIONS, file.path, file.originalname]);
     fileRecords.push({
       filepath: file.path,
       filename: file.originalname
@@ -253,7 +254,7 @@ app.post('/api/trips/:id/options', authMiddleware, travelOptionsUpload.array('fi
 
   // Update trip status
   const { updateTripOptionStatus } = await import('./trips.js');
-  await updateTripOptionStatus(tripId, 'SELECT_OPTION');
+  await updateTripOptionStatus(tripId, TRIP_STATUS.SELECT_OPTION);
 
   // Send email with attachments to employee
   setImmediate(async () => {
@@ -271,12 +272,12 @@ app.post('/api/trips/:id/options', authMiddleware, travelOptionsUpload.array('fi
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
         // Get Travel Admin email for CC
-        const travelAdmin = await pool.query('SELECT email FROM users WHERE role = $1 LIMIT 1', ['travel_admin']);
+        const travelAdmin = await pool.query('SELECT email FROM users WHERE role = $1 LIMIT 1', [USER_ROLES.TRAVEL_ADMIN]);
         const ccEmail = travelAdmin.rows.length > 0 ? travelAdmin.rows[0].email : undefined;
 
         await sendTripNotificationEmail(
           trip.requester_email,
-          `Trip #${trip.reference_no} - Travel Options Available`,
+          `Trip #${trip.reference_no} - ${EMAIL_SUBJECTS.OPTIONS_AVAILABLE}`,
           trip,
           'Travel options uploaded by Travel Admin. Please select your preferred option.',
           attachments,
@@ -300,7 +301,7 @@ app.post('/api/trips/:id/select', authMiddleware, async (req: any, res: any) => 
 });
 
 app.post('/api/trips/:id/receipts', authMiddleware, receiptsUpload.array('files', 10), async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin') return res.status(403).json({ error: 'Unauthorized' });
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
 
   const tripId = parseInt(req.params.id);
   const { totalCost } = req.body;
@@ -317,7 +318,7 @@ app.post('/api/trips/:id/receipts', authMiddleware, receiptsUpload.array('files'
   if (req.files && (req.files as any).length > 0) {
     for (const file of req.files as any) {
       await pool.query('INSERT INTO file_uploads (trip_id, uploaded_by, file_type, filepath, filename) VALUES ($1,$2,$3,$4,$5)',
-        [tripId, req.user.id, 'receipts', file.path, file.originalname]);
+        [tripId, req.user.id, FILE_TYPES.RECEIPTS, file.path, file.originalname]);
       fileRecords.push({
         filepath: file.path,
         filename: file.originalname
@@ -328,7 +329,7 @@ app.post('/api/trips/:id/receipts', authMiddleware, receiptsUpload.array('files'
   // Update trip status and cost
   const { updateTripOptionStatus } = await import('./trips.js');
   await pool.query('UPDATE trips SET status = $1, total_cost = $2, booked_at = $3 WHERE id = $4',
-    ['BOOKED', costNum, new Date(), tripId]);
+    [TRIP_STATUS.BOOKED, costNum, new Date(), tripId]);
 
   // Send email with receipt attachments to employee
   setImmediate(async () => {
@@ -347,7 +348,7 @@ app.post('/api/trips/:id/receipts', authMiddleware, receiptsUpload.array('files'
 
         await sendTripNotificationEmail(
           trip.requester_email,
-          `Trip #${trip.reference_no} - Booking Confirmed & Receipts Attached`,
+          `Trip #${trip.reference_no} - ${EMAIL_SUBJECTS.BOOKING_CONFIRMED}`,
           trip,
           `Trip booked successfully - Total Cost: ₹${costNum.toLocaleString('en-IN')}${attachments.length > 0 ? ', receipts uploaded by Travel Admin' : ''}`,
           attachments,
@@ -369,13 +370,13 @@ app.get('/api/trips/my', authMiddleware, async (req: any, res: any) => {
 });
 
 // Visa Upload Middleware
-const visaUpload = multer({ dest: 'uploads/visas/' });
-if (!fs.existsSync(path.join(uploadsDir, 'visas'))) {
-  fs.mkdirSync(path.join(uploadsDir, 'visas'));
+const visaUpload = multer({ dest: UPLOAD_PATHS.VISAS });
+if (!fs.existsSync(path.join(process.cwd(), UPLOAD_PATHS.VISAS))) {
+  fs.mkdirSync(path.join(process.cwd(), UPLOAD_PATHS.VISAS));
 }
 
 app.get('/api/trips/visa-requests', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Unauthorized' });
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
   const { getVisaRequests } = await import('./trips.js');
   const limit = parseInt(req.query.limit as string) || 20;
   const offset = parseInt(req.query.offset as string) || 0;
@@ -383,7 +384,7 @@ app.get('/api/trips/visa-requests', authMiddleware, async (req: any, res: any) =
 });
 
 app.post('/api/trips/:id/visa-upload', authMiddleware, visaUpload.single('file'), async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Unauthorized' });
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
 
   const tripId = parseInt(req.params.id);
   const { totalCost } = req.body;
@@ -401,7 +402,7 @@ app.post('/api/trips/:id/visa-upload', authMiddleware, visaUpload.single('file')
 
   // Upload file
   await pool.query('INSERT INTO file_uploads (trip_id, uploaded_by, file_type, filepath, filename) VALUES ($1,$2,$3,$4,$5)',
-    [tripId, req.user.id, 'visa', file.path, file.originalname]);
+    [tripId, req.user.id, FILE_TYPES.VISA, file.path, file.originalname]);
 
   // Update trip status and cost
   const { uploadVisa } = await import('./trips.js');
@@ -428,7 +429,7 @@ app.post('/api/trips/:id/cancel', authMiddleware, async (req: any, res: any) => 
 
 app.post('/api/trips/:id/confirm-cancellation', authMiddleware, async (req: any, res: any) => {
   try {
-    if (req.user.role !== 'travel_admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Unauthorized' });
+    if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
     const { confirmCancellation } = await import('./trips.js');
     const result = await confirmCancellation(parseInt(req.params.id), req.body.cancellationCost, req.user);
     res.json(result);
@@ -460,7 +461,7 @@ app.get('/api/dashboard/kpis', authMiddleware, async (req: any, res: any) => {
 });
 
 app.get('/api/analytics', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin' && req.user.role !== 'super_admin') return res.status(403);
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403);
   const { getAnalytics } = await import('./trips.js');
   res.json(await getAnalytics());
 });
@@ -468,7 +469,7 @@ app.get('/api/analytics', authMiddleware, async (req: any, res: any) => {
 
 
 app.get('/api/trips/booked/excel', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'travel_admin' && req.user.role !== 'super_admin') return res.status(403);
+  if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403);
   const { startDate, endDate } = req.query;
   const { generateExcelForBookedTrips } = await import('./trips.js');
   // const { XLSX } = await import('xlsx');
@@ -480,27 +481,27 @@ app.get('/api/trips/booked/excel', authMiddleware, async (req: any, res: any) =>
 
 // User Management APIs
 app.get('/api/users', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'super_admin') return res.status(403);
+  if (req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403);
   const { getAllUsers } = await import('./trips.js');
   res.json(await getAllUsers());
 });
 
 app.post('/api/users', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'super_admin') return res.status(403);
+  if (req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403);
   const { createUser } = await import('./trips.js');
   const result = await createUser(req.body);
   res.json(result);
 });
 
 app.put('/api/users/:id', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'super_admin') return res.status(403);
+  if (req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403);
   const { updateUser } = await import('./trips.js');
   const result = await updateUser(parseInt(req.params.id), req.body);
   res.json(result);
 });
 
 app.delete('/api/users/:id', authMiddleware, async (req: any, res: any) => {
-  if (req.user.role !== 'super_admin') return res.status(403);
+  if (req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403);
   const { deleteUser } = await import('./trips.js');
   await deleteUser(parseInt(req.params.id));
   res.json({ success: true });

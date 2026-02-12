@@ -13,15 +13,15 @@ export interface AuthUser {
   reporting_manager_id?: string;
 }
 
-const ACCESS_TOKEN_EXPIRY = '9h';
-const REFRESH_TOKEN_EXPIRY_DAYS = 10;
+const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || '9h';
+const REFRESH_TOKEN_EXPIRY_DAYS = parseInt(process.env.REFRESH_TOKEN_EXPIRY_DAYS || '10', 10);
 
 export const generateAccessToken = (user: AuthUser) => {
-  return jwt.sign(user, process.env.JWT_SECRET!, { expiresIn: ACCESS_TOKEN_EXPIRY });
+  return jwt.sign({ ...user, type: 'access' }, process.env.JWT_SECRET!, { expiresIn: ACCESS_TOKEN_EXPIRY as any });
 };
 
 export const generateRefreshToken = async (user: AuthUser) => {
-  const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET!, { expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d` });
+  const refreshToken = jwt.sign({ id: user.id, type: 'refresh' }, process.env.JWT_SECRET!, { expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d` as any });
 
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
@@ -75,7 +75,11 @@ export const refreshAccessToken = async (refreshToken: string) => {
 
   try {
     // Verify token signature
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!) as { id: number };
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!) as { id: number, type: string };
+
+    if (decoded.type !== 'refresh') {
+      throw new Error('Invalid token type');
+    }
 
     // Check if token exists in DB and is not expired
     const result = await pool.query(
@@ -120,6 +124,11 @@ export const refreshAccessToken = async (refreshToken: string) => {
 export const authenticate = (token: string) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+
+    if (decoded.type !== 'access') {
+      return null;
+    }
+
     // ✅ decoded now matches AuthUser structure
     return decoded as AuthUser;
   } catch (err) {

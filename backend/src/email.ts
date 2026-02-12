@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import type { AuthUser } from './auth.js';
 import fs from 'fs';
 import path from 'path';
+import { TRIP_STATUS, ITINERARY_TYPES } from './constants.js';
 
 console.log('Initializing Outlook SMTP email service...');
 console.log('EMAIL_USER configured:', !!process.env.EMAIL_USER);
@@ -55,16 +56,16 @@ const createTripEmailHTML = (tripData: any, action?: string, attachments?: any[]
   const idToDisplay = requesterId || userIdAlt || 'N/A';
 
   const statusColors = {
-    PENDING: '#ffa726',
-    RM_PENDING: '#42a5f5',
-    TRAVEL_ADMIN_PENDING: '#26a69a',
-    APPROVED: '#66bb6a',
-    SELECT_OPTION: '#ff7043',
-    OPTION_SELECTED: '#8d6e63',
-    BOOKED: '#26a69a',
-    CLOSED: '#546e7a',
-    REJECTED: '#ef5350',
-    EDIT: '#ffee58'
+    [TRIP_STATUS.PENDING]: '#ffa726',
+    [TRIP_STATUS.RM_PENDING]: '#42a5f5',
+    [TRIP_STATUS.TRAVEL_ADMIN_PENDING]: '#26a69a',
+    [TRIP_STATUS.APPROVED]: '#66bb6a',
+    [TRIP_STATUS.SELECT_OPTION]: '#ff7043',
+    [TRIP_STATUS.OPTION_SELECTED]: '#8d6e63',
+    [TRIP_STATUS.BOOKED]: '#26a69a',
+    [TRIP_STATUS.CLOSED]: '#546e7a',
+    [TRIP_STATUS.REJECTED]: '#ef5350',
+    [TRIP_STATUS.EDIT]: '#ffee58'
   };
 
   const currentStatusColor = statusColors[status as keyof typeof statusColors] || '#757575';
@@ -136,7 +137,7 @@ const createTripEmailHTML = (tripData: any, action?: string, attachments?: any[]
               <strong>Detailed Itinerary:</strong><br>
               ${itineraries.map((it: any, idx: number) => {
     const details = it.details;
-    const typeEmoji = it.type === 'flight' ? '✈️' : it.type === 'hotel' ? '🏨' : it.type === 'car' ? '🚗' : it.type === 'train' ? '🚂' : '📋';
+    const typeEmoji = it.type === ITINERARY_TYPES.FLIGHT ? '✈️' : it.type === ITINERARY_TYPES.HOTEL ? '🏨' : it.type === ITINERARY_TYPES.CAR ? '🚗' : it.type === ITINERARY_TYPES.TRAIN ? '🚂' : '📋';
     let formattedDetails = '';
     if (typeof details === 'object') {
       formattedDetails = Object.entries(details).map(([key, value]) =>
