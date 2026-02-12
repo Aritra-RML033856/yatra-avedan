@@ -36,6 +36,16 @@ interface ItineraryReviewProps {
 
 const DetailRow: React.FC<{ icon?: React.ReactNode; label: string; value: React.ReactNode }> = ({ icon, label, value }) => {
     if (!value) return null;
+    let displayValue = value;
+    // Safety check: if value is a plain object (and not a React element), stringify it
+    // This prevents "Objects are not valid as a React child" errors
+    if (typeof value === 'object' && value !== null && !React.isValidElement(value)) {
+        // Double check it's not an array of elements (which is valid), but we assume single value here usually
+        if (!Array.isArray(value)) {
+             displayValue = JSON.stringify(value);
+        }
+    }
+
     return (
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
             {icon && <Box sx={{ color: 'text.secondary', mt: 0.3 }}>{icon}</Box>}
@@ -44,7 +54,7 @@ const DetailRow: React.FC<{ icon?: React.ReactNode; label: string; value: React.
                     {label}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {value}
+                    {displayValue}
                 </Typography>
             </Box>
         </Box>

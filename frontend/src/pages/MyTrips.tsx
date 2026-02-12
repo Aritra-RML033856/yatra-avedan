@@ -597,11 +597,13 @@ const MyTrips: React.FC = () => {
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {itinerary.type === 'hotel' ? (
-                            `Location: ${itinerary.details.location || ''}`
+                            `Location: ${(typeof itinerary.details.location === 'object' ? (itinerary.details.location.cityName || JSON.stringify(itinerary.details.location)) : itinerary.details.location) || ''}`
                           ) : itinerary.type === 'car' ? (
-                            `From: ${itinerary.details.pickupLocation || ''} → To: ${itinerary.details.dropoffLocation || ''}`
+                            `From: ${(typeof itinerary.details.pickupLocation === 'object' ? (itinerary.details.pickupLocation.cityName || JSON.stringify(itinerary.details.pickupLocation)) : itinerary.details.pickupLocation) || ''} → To: ${(typeof itinerary.details.dropoffLocation === 'object' ? (itinerary.details.dropoffLocation.cityName || JSON.stringify(itinerary.details.dropoffLocation)) : itinerary.details.dropoffLocation) || ''}`
+                          ) : itinerary.type === 'train' ? (
+                            `From: ${(typeof itinerary.details.departFrom === 'object' ? (itinerary.details.departFrom.stnName || itinerary.details.departFrom.stnCode) : itinerary.details.departFrom) || ''} → To: ${(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.stnName || itinerary.details.arriveAt.stnCode) : itinerary.details.arriveAt) || ''}`
                           ) : (
-                            `From: ${itinerary.details.departFrom || ''} → To: ${itinerary.details.arriveAt || ''}`
+                             `From: ${(typeof itinerary.details.departFrom === 'object' ? (itinerary.details.departFrom.code || itinerary.details.departFrom.name) : itinerary.details.departFrom) || ''} → To: ${(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.code || itinerary.details.arriveAt.name) : itinerary.details.arriveAt) || ''}`
                           )}
                         </Typography>
                       </Paper>

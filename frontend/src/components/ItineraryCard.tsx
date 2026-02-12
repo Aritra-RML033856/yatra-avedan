@@ -65,16 +65,22 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({ item, index, onRemove, ch
   const getSummary = () => {
     const d = item.details;
     if (item.type === 'flight') {
-        return d.departFrom && d.arriveAt ? `${d.departFrom} ✈️ ${d.arriveAt}` : 'New Flight';
+        const from = d.departFrom?.code || d.departFrom?.name || (typeof d.departFrom === 'string' ? d.departFrom : '') || '';
+        const to = d.arriveAt?.code || d.arriveAt?.name || (typeof d.arriveAt === 'string' ? d.arriveAt : '') || '';
+        return from && to ? `${from} ✈️ ${to}` : 'New Flight';
     }
     if (item.type === 'hotel') {
-        return d.location ? `${d.location}` : 'New Hotel Stay';
+        const loc = d.location?.cityName || (typeof d.location === 'string' ? d.location : '') || '';
+        return loc ? `${loc}` : 'New Hotel Stay';
     }
     if (item.type === 'car') {
-        return d.pickupLocation ? `${d.pickupLocation}` : 'New Car Rental';
+        const loc = d.pickupLocation?.cityName || (typeof d.pickupLocation === 'string' ? d.pickupLocation : '') || '';
+        return loc ? `${loc}` : 'New Car Rental';
     }
     if (item.type === 'train') {
-        return d.departFrom && d.arriveAt ? `${d.departFrom} 🚆 ${d.arriveAt}` : 'New Train Journey';
+        const from = d.departFrom?.stnCode || d.departFrom?.stnName || (typeof d.departFrom === 'string' ? d.departFrom : '') || '';
+        const to = d.arriveAt?.stnCode || d.arriveAt?.stnName || (typeof d.arriveAt === 'string' ? d.arriveAt : '') || '';
+        return from && to ? `${from} 🚆 ${to}` : 'New Train Journey';
     }
     return '';
   };

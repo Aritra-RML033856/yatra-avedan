@@ -512,4 +512,9 @@ app.delete('/api/users/:id', authMiddleware, async (req: any, res: any) => {
 
 app.use('/api', locationsRouter);
 
+// Global 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
 app.listen(PORT, HOST, () => console.log(`Server running on ${HOST}:${PORT}`));

@@ -80,6 +80,7 @@ const CarCityAutocomplete: React.FC<CarCityAutocompleteProps> = ({
       inputValue={inputValue}
       onInputChange={handleInputChange}
       onChange={handleChange}
+      isOptionEqualToValue={(option, value) => option.cityCode === value.cityCode}
       loading={loading}
       filterOptions={(x) => x}
       renderInput={(params) => (

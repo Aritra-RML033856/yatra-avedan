@@ -466,8 +466,8 @@ const Approvals: React.FC = () => {
                           {itinerary.type === 'flight' && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2 }}>
-                                <strong>From:</strong> {itinerary.details.departFrom || 'N/A'}
-                                <strong>To:</strong> {itinerary.details.arriveAt || 'N/A'}
+                                <strong>From:</strong> {(typeof itinerary.details.departFrom === 'object' ? (itinerary.details.departFrom.code || itinerary.details.departFrom.name) : itinerary.details.departFrom) || 'N/A'}
+                                <strong>To:</strong> {(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.code || itinerary.details.arriveAt.name) : itinerary.details.arriveAt) || 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                                 <span><strong>Departure:</strong> {itinerary.details.departureDate || 'N/A'}</span>
@@ -494,7 +494,7 @@ const Approvals: React.FC = () => {
                           {itinerary.type === 'hotel' && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                               <Typography variant="body2">
-                                <strong>Location:</strong> {itinerary.details.location || 'N/A'}
+                                <strong>Location:</strong> {(typeof itinerary.details.location === 'object' ? (itinerary.details.location.cityName || JSON.stringify(itinerary.details.location)) : itinerary.details.location) || 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                                 <span><strong>Check-in:</strong> {itinerary.details.checkinDate || 'N/A'} at {itinerary.details.checkinTime || 'N/A'}</span>
@@ -517,8 +517,8 @@ const Approvals: React.FC = () => {
                           {itinerary.type === 'car' && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <span><strong>From:</strong> {itinerary.details.pickupLocation || 'N/A'}</span>
-                                <span><strong>To:</strong> {itinerary.details.dropoffLocation || 'N/A'}</span>
+                                <span><strong>From:</strong> {(typeof itinerary.details.pickupLocation === 'object' ? (itinerary.details.pickupLocation.cityName || JSON.stringify(itinerary.details.pickupLocation)) : itinerary.details.pickupLocation) || 'N/A'}</span>
+                                <span><strong>To:</strong> {(typeof itinerary.details.dropoffLocation === 'object' ? (itinerary.details.dropoffLocation.cityName || JSON.stringify(itinerary.details.dropoffLocation)) : itinerary.details.dropoffLocation) || 'N/A'}</span>
                               </Typography>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                                 <span><strong>Pick-up:</strong> {itinerary.details.pickupDate || 'N/A'} at {itinerary.details.pickupTime || 'N/A'}</span>
@@ -541,8 +541,8 @@ const Approvals: React.FC = () => {
                           {itinerary.type === 'train' && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                               <Typography variant="body2" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <span><strong>From:</strong> {itinerary.details.departFrom || 'N/A'}</span>
-                                <span><strong>To:</strong> {itinerary.details.arriveAt || 'N/A'}</span>
+                                <span><strong>From:</strong> {(typeof itinerary.details.departFrom === 'object' ? (itinerary.details.departFrom.stnName || itinerary.details.departFrom.stnCode) : itinerary.details.departFrom) || 'N/A'}</span>
+                                <span><strong>To:</strong> {(typeof itinerary.details.arriveAt === 'object' ? (itinerary.details.arriveAt.stnName || itinerary.details.arriveAt.stnCode) : itinerary.details.arriveAt) || 'N/A'}</span>
                               </Typography>
                               <Typography variant="body2">
                                 <strong>Departure:</strong> {itinerary.details.departureDate || 'N/A'} at {itinerary.details.departTime ? `${itinerary.details.departTime} (${getTimeSlotLabel(itinerary.details.departTime)})` : 'N/A'}

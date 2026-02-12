@@ -14,6 +14,8 @@ import Analytics from './pages/Analytics';
 import UserManagement from './pages/UserManagement';
 import About from './pages/About';
 import MMTCallback from './pages/MMTCallback';
+import NotFound from './pages/NotFound';
+import AuthGuard from './components/AuthGuard';
 import './App.css';
 
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -34,7 +36,7 @@ const theme = createTheme({
   },
 });
 
-function App() {
+const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -43,16 +45,71 @@ function App() {
           <BrowserRouter>
             <NavigationBar />
             <Routes>
+              {/* Public Routes */}
               <Route path="/signin" element={<SignIn />} />
               <Route path="/about" element={<About />} />
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/new-request" element={<NewRequest />} />
-              <Route path="/my-trips" element={<MyTrips />} />
-              <Route path="/travel-management" element={<TravelManagement />} />
-              <Route path="/approvals" element={<Approvals />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/user-management" element={<UserManagement />} />
               <Route path="/mmt-callback" element={<MMTCallback />} />
+
+              {/* Protected Routes */}
+              <Route
+                path="/"
+                element={
+                  <AuthGuard>
+                    <Dashboard />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/new-request"
+                element={
+                  <AuthGuard>
+                    <NewRequest />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/my-trips"
+                element={
+                  <AuthGuard>
+                    <MyTrips />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/travel-management"
+                element={
+                  <AuthGuard requiredRoles={['travel_admin', 'super_admin']}>
+                    <TravelManagement />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/approvals"
+                element={
+                  <AuthGuard>
+                    <Approvals />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <AuthGuard requiredRoles={['travel_admin', 'super_admin']}>
+                    <Analytics />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/user-management"
+                element={
+                  <AuthGuard requiredRoles={['super_admin']}>
+                    <UserManagement />
+                  </AuthGuard>
+                }
+              />
+
+              {/* 404 Route */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

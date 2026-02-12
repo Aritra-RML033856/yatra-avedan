@@ -79,6 +79,7 @@ const TrainStationAutocomplete: React.FC<TrainStationAutocompleteProps> = ({
       inputValue={inputValue}
       onInputChange={handleInputChange}
       onChange={handleChange}
+      isOptionEqualToValue={(option, value) => option.stnCode === value.stnCode}
       loading={loading}
       filterOptions={(x) => x}
       renderInput={(params) => (
