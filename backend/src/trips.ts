@@ -537,7 +537,7 @@ export const generateExcelForBookedTrips = async (startDate?: string, endDate?: 
   const data = trips.rows.map(row => {
     // Format approval history
     const approvals = row.approval_history.map((app: any) => {
-      const date = app.timestamp ? new Date(app.timestamp).toLocaleDateString() : 'N/A';
+      const date = app.timestamp ? new Date(app.timestamp).toLocaleString() : 'N/A';
       const role = app.approver_role ? app.approver_role.toUpperCase() : 'N/A';
       const action = app.action ? app.action.toUpperCase() : 'PENDING';
       return `${role} (${app.approver_name}): ${action} on ${date}\nComments: ${app.comments || 'None'}`;
@@ -553,9 +553,9 @@ export const generateExcelForBookedTrips = async (startDate?: string, endDate?: 
       status: row.status,
       total_cost: row.total_cost ? `₹${row.total_cost.toLocaleString('en-IN')}` : 'N/A',
       option_selected: row.option_selected || 'N/A',
-      created_at: new Date(row.created_at).toLocaleDateString(),
-      submitted_at: row.submitted_at ? new Date(row.submitted_at).toLocaleDateString() : 'N/A',
-      booked_at: row.booked_at ? new Date(row.booked_at).toLocaleDateString() : 'N/A',
+      created_at: new Date(row.created_at).toLocaleString(),
+      submitted_at: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : 'N/A',
+      booked_at: row.booked_at ? new Date(row.booked_at).toLocaleString() : 'N/A',
       requester_name: row.requester_name,
       requester_id: row.requester_id,
       email: row.requester_email,

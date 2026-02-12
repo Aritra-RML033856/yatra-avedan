@@ -354,7 +354,7 @@ const MyTrips: React.FC = () => {
                 {/* Trip Info */}
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Created: {new Date(trip.created_at).toLocaleDateString()}
+                    Created: {new Date(trip.created_at).toLocaleString()}
                   </Typography>
                   {trip.option_selected && (
                     <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>

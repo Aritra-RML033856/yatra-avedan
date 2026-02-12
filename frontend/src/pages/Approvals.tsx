@@ -309,11 +309,11 @@ const Approvals: React.FC = () => {
                         {approval.reference_no}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Created: {new Date(approval.created_at).toLocaleDateString()}
+                        Created: {new Date(approval.created_at).toLocaleString()}
                       </Typography>
                       {approval.action_timestamp && (
                         <Typography variant="body2" color="text.secondary">
-                          Decided: {new Date(approval.action_timestamp).toLocaleDateString()}
+                          Decided: {new Date(approval.action_timestamp).toLocaleString()}
                         </Typography>
                       )}
                     </Box>
