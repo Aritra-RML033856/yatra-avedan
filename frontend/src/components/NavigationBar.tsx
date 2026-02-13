@@ -71,10 +71,10 @@ const NavigationBar: React.FC = () => {
     setPasswordError('');
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     handleProfileDialogClose();
-    window.location.href = '/signin';
+    // navigate('/signin'); // AuthContext logout clears user, triggering AuthGuard redirect automatically
   };
 
   const handlePasswordChange = async () => {
