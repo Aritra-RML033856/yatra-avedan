@@ -29,3 +29,12 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+debug_out.txt
+debug_db.js
+debug_db.ts
+debug_logout_logic.ts
+debug_logout_logic.js
+debug_logout_logic.js.map
+debug_logout_logic.d.ts
+debug_logout_logic.d.ts.map

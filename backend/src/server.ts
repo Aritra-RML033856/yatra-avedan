@@ -4,6 +4,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -52,8 +53,12 @@ const PORT: number = parseInt(process.env.PORT ?? '5000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // Initialize database
 (async () => {
@@ -75,7 +80,10 @@ const authMiddleware = (req: any, res: any, next: any) => {
   if (!authHeader) return res.status(401).json({ error: 'No token provided' });
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
   const decoded = authenticate(token);
-  if (!decoded) return res.status(401).json({ error: 'Invalid token' });
+  if (!decoded) {
+    console.error('Auth Middleware: Invalid token or verification failed');
+    return res.status(401).json({ error: 'Invalid token' });
+  }
   req.user = decoded;
   next();
 };
@@ -128,7 +136,18 @@ app.post('/api/auth/login', async (req: any, res: any) => {
       return res.status(400).json({ error: 'Userid and password required' });
     }
     const result = await login(userid, password);
-    res.json(result);
+
+    // Set refresh token in httpOnly cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // false in dev
+      sameSite: 'lax',
+      maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
+      path: '/'
+    });
+
+    // Return only access token and user info
+    res.json({ accessToken: result.accessToken, user: result.user });
   } catch (err: any) {
     res.status(401).json({ error: err.message });
   }
@@ -136,27 +155,78 @@ app.post('/api/auth/login', async (req: any, res: any) => {
 
 app.post('/api/auth/refresh', async (req: any, res: any) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token required' });
+      return res.status(401).json({ error: 'Refresh token required' }); // 401 triggers logout on frontend
     }
     const { refreshAccessToken } = await import('./auth.js');
     const result = await refreshAccessToken(refreshToken);
-    res.json(result);
+
+    // Rotate refresh token: set new cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
+      path: '/'
+    });
+
+    res.json({ accessToken: result.accessToken, user: result.user });
   } catch (err: any) {
+    // Clear cookie if refresh fails
+    res.clearCookie('refreshToken');
     res.status(401).json({ error: err.message });
   }
 });
 
 app.post('/api/auth/logout', async (req: any, res: any) => {
   try {
-    const { refreshToken } = req.body;
+    // Aggressively clear cookies with different options to catch all variations
+    const clearOptions = [
+      { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' },
+      { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' }, // Add lax option
+      { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/api/auth' },
+      { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' } // default path
+    ];
+
+    clearOptions.forEach(option => res.clearCookie('refreshToken', option));
+
+    const refreshToken = req.cookies.refreshToken;
+    const authHeader = req.headers.authorization;
+
+    console.log('LOGOUT REQUEST:', {
+      hasCookie: !!refreshToken,
+      hasAuthHeader: !!authHeader,
+      cookies: req.cookies
+    });
+
     if (refreshToken) {
+      console.log('Revoking token via Cookie');
       const { logout } = await import('./auth.js');
       await logout(refreshToken);
+    } else if (authHeader) {
+      // Fallback: If cookie is missing (path issue?), use Access Token to identify user and revoke ALL sessions
+      // This is a "Nuclear" logout to fix the stuck session issue
+      console.log('Cookie missing. Attempting revocation via Access Token...');
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+      const { authenticate, revokeUserRefreshTokens } = await import('./auth.js');
+
+      const decoded = authenticate(token);
+      if (decoded) {
+        console.log(`Revoking all tokens for user ${decoded.id} (Nuclear Option)`);
+        await revokeUserRefreshTokens(decoded.id);
+      } else {
+        console.log('Access token invalid, cannot identify user to revoke.');
+      }
+    } else {
+      console.log('No credentials provided for logout. Just cleared cookies.');
     }
+
     res.json({ success: true });
   } catch (err: any) {
+    console.error('Logout error:', err);
+    // Even on error, try to clear
+    res.clearCookie('refreshToken', { path: '/' });
     res.status(500).json({ error: err.message });
   }
 });
