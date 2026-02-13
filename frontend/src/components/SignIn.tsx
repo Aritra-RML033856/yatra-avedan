@@ -1,7 +1,7 @@
 // SignIn.tsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
 import {
@@ -126,9 +126,9 @@ const SignIn: React.FC = () => {
         userid,
         password,
         remember,
-      });
+      }, { withCredentials: true });
       // @ts-ignore
-      login(response.data.accessToken, response.data.refreshToken, response.data.user);
+      login(response.data.accessToken, response.data.user);
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please check credentials.');
@@ -136,6 +136,10 @@ const SignIn: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <StyledContainer>
