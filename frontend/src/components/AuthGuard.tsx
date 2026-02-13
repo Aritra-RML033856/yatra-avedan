@@ -18,6 +18,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRoles }) => {
   // but AuthContext in this app seems to load from localStorage synchronously on mount 
   // or establishes initial state.
   
+  //if token is not there and user already have refresh token then call /refresh which give access token.
+  //  If refresh token is also expired then redirect to login
   if (!token) {
     // 1. IF user not logged in -> redirect -> Login
     return <Navigate to="/signin" state={{ from: location }} replace />;

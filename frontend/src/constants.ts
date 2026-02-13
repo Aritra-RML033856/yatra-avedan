@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
     API_PORT: 5000,
     MMT_PORT: 4000,
-    FRONTEND_PORT: 3000,
+    FRONTEND_PORT: 3002,
 };
 
 export const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:${APP_CONFIG.API_PORT}`;

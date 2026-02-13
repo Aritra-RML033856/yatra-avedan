@@ -197,30 +197,33 @@ const TravelManagement: React.FC = () => {
       let params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
 
       // Identify Endpoint based on Tab
-      // 0: Upload Options -> status=APPROVED
-      // 1: Options Given -> status=SELECT_OPTION
-      // 2: Upload Receipts -> status=OPTION_SELECTED
-      // 3: Booked -> status=BOOKED
-      // 4: VISA -> status=VISA_PENDING (handled by separate endpoint generally but can filter)
-      // 5: Cancelled -> status=CANCELLATION_PENDING (separate endpoint)
+      // New Tab Logic per user request:
+      // 0: Booked -> status=BOOKED
+      // 1: Cancelled -> status=CANCELLED or CANCELLATION_PENDING (using /cancelled endpoint)
+      // 2: Closed -> status=CLOSED
+      // 3: Visa -> status=VISA_PENDING (using /visa-requests endpoint)
+      
+      // Wait, user said: "booked, cancelled, closed, visa" order? 
+      // User said: "In 'Travel Management' only booked, cancelled, closed, visa - these should come."
+      // I will follow the order: Booked, Visa, Cancelled, Closed (seems logical) or Booked, Cancelled, Closed, Visa.
+      // Let's stick to Booked, Visa, Cancelled, Closed as in my plan? 
+      // Plan was: Booked, Visa, Cancelled, Closed. 
+      // Let's check code implementation below.
 
-      // We need to map tab to API call
       if (tabIndex === 0) {
-        url = `${API_BASE_URL}/api/trips/approved`;
-        params.append('status', 'APPROVED');
-      } else if (tabIndex === 1) {
-        url = `${API_BASE_URL}/api/trips/approved`;
-        params.append('status', 'SELECT_OPTION');
-      } else if (tabIndex === 2) {
-        url = `${API_BASE_URL}/api/trips/approved`;
-        params.append('status', 'OPTION_SELECTED');
-      } else if (tabIndex === 3) {
+        // Booked
         url = `${API_BASE_URL}/api/trips/approved`;
         params.append('status', 'BOOKED');
-      } else if (tabIndex === 4) {
-        url = `${API_BASE_URL}/api/trips/visa-requests`;
-      } else if (tabIndex === 5) {
+      } else if (tabIndex === 1) {
+        // Cancelled
         url = `${API_BASE_URL}/api/trips/cancelled`;
+      } else if (tabIndex === 2) {
+        // Closed
+        url = `${API_BASE_URL}/api/trips/approved`;
+        params.append('status', 'CLOSED');
+      } else if (tabIndex === 3) {
+        // Visa
+        url = `${API_BASE_URL}/api/trips/visa-requests`;
       }
 
       const response = await axios.get(`${url}?${params.toString()}`);
@@ -488,12 +491,10 @@ const TravelManagement: React.FC = () => {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-          <Tab label={`Upload Options`} />
-          <Tab label={`Options Given`} />
-          <Tab label={`Upload Receipts`} />
           <Tab label={`Booked`} />
-          <Tab label={`VISA`} />
           <Tab label={`Cancelled`} />
+          <Tab label={`Closed`} />
+          <Tab label={`VISA`} />
         </Tabs>
       </Box>
 

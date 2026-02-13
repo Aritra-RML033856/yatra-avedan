@@ -11,7 +11,7 @@ import {
   Card,
   CardContent,
   Container,
-  // Grid,
+  Grid,
   Paper,
   List,
   ListItem,
@@ -23,7 +23,7 @@ import {
   Skeleton,
   Tooltip,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
+
 import {
   Assignment,
   CheckCircle,
@@ -330,13 +330,13 @@ const Dashboard: React.FC = () => {
           <Grid container spacing={4}>
             
             {/* KPI Section */}
-            <Grid item xs={12} md={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <NextTripCard />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <StatCard
                     title="Annual Spend"
                     value={`₹${(kpiData.annualSpend || 0).toLocaleString('en-IN')}`}
@@ -344,7 +344,7 @@ const Dashboard: React.FC = () => {
                     color="linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <StatCard
                     title="Active Trips"
                     value={kpiData.activeTrips}
@@ -352,7 +352,7 @@ const Dashboard: React.FC = () => {
                     color="linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <StatCard
                     title="Pending Approvals"
                     value={kpiData.pendingApprovals}
@@ -360,7 +360,7 @@ const Dashboard: React.FC = () => {
                     color="linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%)"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <StatCard
                     title="Total Trips"
                     value={kpiData.myTrips}
@@ -369,12 +369,12 @@ const Dashboard: React.FC = () => {
                   />
                 </Grid>
                 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                    <StatusChart />
                 </Grid>
 
                 {/* Quick Actions */}
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="h5" sx={{ mt: 4, mb: 3, fontWeight: 700, color: '#2d3748' }}>
                     Quick Actions
                   </Typography>
@@ -384,7 +384,7 @@ const Dashboard: React.FC = () => {
                       if (!allowed) return null;
                       
                       return (
-                        <Grid item xs={12} sm={6} md={4} key={item.to}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.to}>
                           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                             <Tooltip title={item.desc} arrow>
                               <Card
@@ -440,7 +440,7 @@ const Dashboard: React.FC = () => {
             </Grid>
 
             {/* Recent Activity Sidebar */}
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <motion.div variants={itemVariants}>
                 <Paper
                   elevation={0}

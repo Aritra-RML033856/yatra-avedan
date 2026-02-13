@@ -33,6 +33,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
             onChange={(newValue) => {
                 onChange(newValue ? newValue.format('YYYY-MM-DD') : null);
             }}
+            format="DD-MM-YYYY"
             minDate={minDate}
             slotProps={{
                 textField: {
