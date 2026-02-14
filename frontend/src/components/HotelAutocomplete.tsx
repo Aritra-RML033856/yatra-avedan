@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import {
@@ -45,8 +45,8 @@ const HotelAutocomplete: React.FC<HotelAutocompleteProps> = ({
   const [inputValue, setInputValue] = useState('');
   
   // Debounced backend search
-  const searchHotels = useCallback(
-    debounce(async (query: string) => {
+  const searchHotels = useMemo(
+    () => debounce(async (query: string) => {
       if (!query.trim() || query.length < 2) {
         setOptions([]);
         return;
@@ -87,7 +87,7 @@ const HotelAutocomplete: React.FC<HotelAutocompleteProps> = ({
     setOptions([]);
     setInputValue('');
     onChange(null);
-  }, [travelType]);
+  }, [travelType, onChange]);
 
   return (
     <Autocomplete

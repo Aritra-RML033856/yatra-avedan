@@ -1,6 +1,6 @@
 import React from 'react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { TextField, Autocomplete, TextFieldProps } from '@mui/material';
+import { TextField, Autocomplete } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 
 // ----------------------------------------------------------------------

@@ -10,8 +10,6 @@ import {
   Box,
   Button,
   IconButton,
-  Menu,
-  MenuItem,
   Chip,
   Dialog,
   DialogTitle,
@@ -49,7 +47,6 @@ interface NavItem {
 const NavigationBar: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',

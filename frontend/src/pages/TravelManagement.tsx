@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { formatDate } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
@@ -21,17 +21,11 @@ import {
   Stack,
   Tabs,
   Tab,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TextField,
   Fade,
-  IconButton,
-  Popover,
 } from '@mui/material';
-import dayjs, { Dayjs } from 'dayjs';
-import DateRangePicker, { DateRange } from '../components/DateRangePicker';
+import dayjs from 'dayjs';
+import DateRangePicker from '../components/DateRangePicker';
 import DateRangeIcon from '@mui/icons-material/DateRange';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -118,12 +112,10 @@ const TravelManagement: React.FC = () => {
   const [cost, setCost] = useState('');
   const [selectedReceiptFiles, setSelectedReceiptFiles] = useState<FileList | null>(null);
 
-  const [visaRequests, setVisaRequests] = useState<Trip[]>([]);
   const [visaUploadArgs, setVisaUploadArgs] = useState<{tripId: number, tripName: string} | null>(null);
   const [visaCost, setVisaCost] = useState('');
   const [visaFile, setVisaFile] = useState<File | null>(null);
   
-  const [cancelledTrips, setCancelledTrips] = useState<Trip[]>([]);
   const [cancellationConfirmOpen, setCancellationConfirmOpen] = useState(false);
   const [selectedCancellationTrip, setSelectedCancellationTrip] = useState<Trip | null>(null);
   const [cancellationCost, setCancellationCost] = useState('');
@@ -188,27 +180,13 @@ const TravelManagement: React.FC = () => {
     if (node) observer.current.observe(node);
   }, [loading, hasMore]);
 
-  const fetchTripsForTab = async (pageNum: number, tabIndex: number) => {
+  const fetchTripsForTab = useCallback(async (pageNum: number, tabIndex: number) => {
     setLoading(true);
     try {
       const limit = 20;
       const offset = pageNum * limit;
       let url = '';
-      let params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
-
-      // Identify Endpoint based on Tab
-      // New Tab Logic per user request:
-      // 0: Booked -> status=BOOKED
-      // 1: Cancelled -> status=CANCELLED or CANCELLATION_PENDING (using /cancelled endpoint)
-      // 2: Closed -> status=CLOSED
-      // 3: Visa -> status=VISA_PENDING (using /visa-requests endpoint)
-      
-      // Wait, user said: "booked, cancelled, closed, visa" order? 
-      // User said: "In 'Travel Management' only booked, cancelled, closed, visa - these should come."
-      // I will follow the order: Booked, Visa, Cancelled, Closed (seems logical) or Booked, Cancelled, Closed, Visa.
-      // Let's stick to Booked, Visa, Cancelled, Closed as in my plan? 
-      // Plan was: Booked, Visa, Cancelled, Closed. 
-      // Let's check code implementation below.
+      const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
 
       if (tabIndex === 0) {
         // Booked
@@ -242,7 +220,7 @@ const TravelManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (token && (user?.role === 'travel_admin' || user?.role === 'super_admin')) {
@@ -251,13 +229,13 @@ const TravelManagement: React.FC = () => {
         setTrips([]);
         fetchTripsForTab(0, tabValue);
     }
-  }, [token, user, tabValue]);
+  }, [token, user, tabValue, fetchTripsForTab]);
 
   useEffect(() => {
     if (page > 0) {
       fetchTripsForTab(page, tabValue);
     }
-  }, [page]);
+  }, [page, tabValue, fetchTripsForTab]);
   
   const handleViewTrip = (trip: Trip) => {
     setSelectedTrip(trip);
@@ -391,34 +369,7 @@ const TravelManagement: React.FC = () => {
     }
   };
 
-  const handleUploadReceipts = async () => {
-      if (!selectedReceiptTrip || !cost || !selectedReceiptFiles) return;
-      setUploading(true);
-      try {
-        const formData = new FormData();
-        Array.from(selectedReceiptFiles).forEach(file => {
-          formData.append('files', file);
-        });
-        formData.append('cost', cost);
-  
-        await axios.post(`${API_BASE_URL}/api/trips/${selectedReceiptTrip.id}/receipts`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-  
-        setReceiptDialogOpen(false);
-        setSelectedReceiptTrip(null);
-        setCost('');
-        setSelectedReceiptFiles(null);
-        refreshTrips();
-      } catch (error) {
-        console.error('Error uploading receipts:', error);
-        alert('Failed to upload receipts');
-      } finally {
-        setUploading(false);
-      }
-    };
+
 
   const handleOpenCancellationConfirm = (trip: Trip) => {
     setSelectedCancellationTrip(trip);

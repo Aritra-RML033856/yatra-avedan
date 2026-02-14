@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import {
@@ -38,8 +37,8 @@ const CarCityAutocomplete: React.FC<CarCityAutocompleteProps> = ({
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
-  const searchCities = useCallback(
-    debounce(async (query: string) => {
+  const searchCities = useMemo(
+    () => debounce(async (query: string) => {
       if (!query.trim() || query.length < 2) {
         setOptions([]);
         return;

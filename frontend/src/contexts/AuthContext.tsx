@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+
+// Global promise to deduplicate refresh requests
+// Defined outside component to persist across renders
+let globalRefreshPromise: Promise<string> | null = null;
 
 interface User {
   id: number;
@@ -38,22 +42,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [loading, setLoading] = useState(true); // Initial loading state
   const [isInterceptorSetup, setIsInterceptorSetup] = useState(false);
+  
+  const getRefreshToken = useCallback(async (): Promise<string> => {
+    if (globalRefreshPromise) return globalRefreshPromise;
 
-  // Global promise to deduplicate refresh requests
-  // This prevents React Strict Mode or concurrent API calls from triggering
-  // a "Double Refresh" which would invalidate the first token and clear the cookie.
-  let isRefreshing = false;
-  let refreshPromise: Promise<string> | null = null;
-
-  const getRefreshToken = async (): Promise<string> => {
-    if (refreshPromise) return refreshPromise;
-
-    refreshPromise = (async () => {
+    globalRefreshPromise = (async () => {
       try {
         const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {}, { withCredentials: true });
         const { accessToken, user: recoveredUser } = response.data;
         
-        // Update local storage immediately to ensure subsequent calls see it
+        // Update local storage immediately
         localStorage.setItem('token', accessToken);
         if (recoveredUser) {
            localStorage.setItem('user', JSON.stringify(recoveredUser));
@@ -62,47 +60,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         throw error;
       } finally {
-        refreshPromise = null;
+        globalRefreshPromise = null;
       }
     })();
 
-    return refreshPromise;
-  };
+    return globalRefreshPromise;
+  }, []);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      // PROACTIVELY Refresh on mount.
-      // 1. If valid cookie exists -> Token rotates, session verified.
-      // 2. If cookie missing (User deleted it) -> 401 -> Logout (Kill zombie session).
-      // 3. If offline/network error -> Keep existing token if available (Graceful degradation).
-      
-      try {
-          const accessToken = await getRefreshToken();
-          setToken(accessToken);
-          const savedUser = localStorage.getItem('user');
-          if (savedUser) setUser(JSON.parse(savedUser));
-      } catch (err: any) {
-          console.log('Session verification failed:', err);
-          // Only logout if it's explicitly an Auth error (missing cookie/invalid token)
-          // Do NOT logout on network errors (keep offline access)
-          if (err.response && err.response.status === 401) {
-            logout();
-          }
-      }
-      setLoading(false);
-    };
-
-    initAuth();
-  }, []); // Run ONCE on mount
-
-  const login = (accessToken: string, user: User) => {
-    localStorage.setItem('token', accessToken);
-    localStorage.setItem('user', JSON.stringify(user));
-    setToken(accessToken);
-    setUser(user);
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
     } catch (err) {
@@ -112,7 +77,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      if (!token) {
+        try {
+            const accessToken = await getRefreshToken();
+            setToken(accessToken);
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) setUser(JSON.parse(savedUser));
+        } catch (err: any) {
+            console.log('Session verification failed:', err);
+            if (err.response && err.response.status === 401) {
+              logout();
+            }
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
+  }, [token, getRefreshToken, logout]); 
+
+  const login = useCallback((accessToken: string, user: User) => {
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('user', JSON.stringify(user));
+    setToken(accessToken);
+    setUser(user);
+  }, []);
 
   // Axios Interceptor
   useEffect(() => {
@@ -160,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       axios.interceptors.response.eject(responseInterceptor);
       setIsInterceptorSetup(false);
     };
-  }, []); // Run ONCE on mount
+  }, [getRefreshToken, logout]);
 
   // Block rendering until interceptors are set up and auth check is done
   if (!isInterceptorSetup || loading) {

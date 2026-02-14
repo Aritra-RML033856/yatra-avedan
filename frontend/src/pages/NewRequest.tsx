@@ -54,7 +54,7 @@ interface ItineraryItem {
 }
 
 const NewRequest: React.FC = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   

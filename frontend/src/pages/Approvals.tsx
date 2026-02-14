@@ -168,7 +168,7 @@ const Approvals: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []); // Removed token as it's handled by interceptor
 
   useEffect(() => {
     if (token) {

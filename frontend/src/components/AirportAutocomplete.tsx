@@ -45,11 +45,11 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
   const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  const getCacheKey = () => `airports_${travelType}`;
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
   // Load all airports once per travel type
   const loadAirports = useCallback(async () => {
+    const getCacheKey = () => `airports_${travelType}`;
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
     const cacheKey = getCacheKey();
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
@@ -96,8 +96,8 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
   }, [allAirports, inputValue]);
 
   // Debounced backend search
-  const searchAirports = useCallback(
-    debounce(async (query: string) => {
+  const searchAirports = useMemo(
+    () => debounce(async (query: string) => {
       if (!query.trim() || query.length < 2) {
         setFilteredOptions(filteredAirports);
         return;

@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
-import { Button, ButtonProps, Box, BoxProps, Paper, PaperProps } from '@mui/material';
+import { Button, ButtonProps, Box, BoxProps, Paper } from '@mui/material';
 
 // ----------------------------------------------------------------------
 

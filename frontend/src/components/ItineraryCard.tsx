@@ -9,7 +9,6 @@ import {
   Chip,
   useTheme,
   alpha,
-  Divider,
 } from '@mui/material';
 import {
   FlightTakeoff,
@@ -18,12 +17,9 @@ import {
   Train,
   Delete,
   ExpandMore,
-  ExpandLess,
-  Edit,
 } from '@mui/icons-material';
 import { ITINERARY_TYPES } from '../constants';
 import { MotionBox, varFadeInUp } from './AnimatedComponents';
-import { motion, AnimatePresence } from 'framer-motion';
 
 // ----------------------------------------------------------------------
 
