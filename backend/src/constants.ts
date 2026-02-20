@@ -34,6 +34,7 @@ export const FILE_TYPES = {
     VISA: 'visa',
     TRAVEL_OPTIONS: 'travel_options',
     RECEIPTS: 'receipts',
+    INVOICE: 'invoice',
 };
 
 export const UPLOAD_PATHS = {
@@ -49,6 +50,7 @@ export const EMAIL_SUBJECTS = {
     CANCELLATION_ACTION_REQUIRED: 'ACTION REQUIRED: Cancellation Request for Booked Trip',
     CANCELLATION_CONFIRMED: 'Trip Cancellation Confirmed',
     VISA_UPLOADED: 'Visa Uploaded',
+    VISA_PROCESSED: 'Visa Processed & Attachment Ready',
     NEW_APPROVAL_REQUIRED: 'New Trip Approval Required',
     TRIP_RESCHEDULED: 'Trip Rescheduled',
     BOOKING_CONFIRMED: 'Booking Confirmed & Receipts Attached',

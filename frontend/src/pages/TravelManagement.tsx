@@ -335,7 +335,7 @@ const TravelManagement: React.FC = () => {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', visaFile);
+      formData.append('visaFile', visaFile);
       formData.append('totalCost', visaCost);
       await axios.post(`${API_BASE_URL}/api/trips/${visaUploadArgs.tripId}/visa-upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -344,7 +344,7 @@ const TravelManagement: React.FC = () => {
       setVisaFile(null);
       setVisaCost('');
       refreshTrips();
-      alert('Visa uploaded successfully!');
+      alert('Visa processed successfully!');
     } catch (error) {
       console.error('Error uploading visa:', error);
       alert('Failed to upload visa');
@@ -717,7 +717,7 @@ const TravelManagement: React.FC = () => {
                 fullWidth
                 sx={{ height: 60 }}
              >
-                {visaFile ? visaFile.name : 'Select Visa File'}
+                {visaFile ? visaFile.name : 'Select Visa File (Required)'}
                 <input
                   type="file"
                   hidden

@@ -122,6 +122,7 @@ export const approveTrip = async (approvalId: number, user: AuthUser, action: 'a
       a.trip_id, a.approver_role,
       t.reference_no, t.trip_name, t.requester_name, t.requester_id, t.designation, t.department,
       t.travel_type, t.destination_country, t.business_purpose, t.status, t.created_at, t.option_selected,
+      t.is_visa_request,
       u.email as requester_email
     FROM approvals a
     JOIN trips t ON a.trip_id = t.id

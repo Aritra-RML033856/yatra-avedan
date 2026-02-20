@@ -20,6 +20,7 @@ backend/uploads/
 coverage/
 verify_locations.ts
 seed_locations.ts
+reset_db.ts
 
 # Misc
 .DS_Store
@@ -38,3 +39,10 @@ debug_logout_logic.js
 debug_logout_logic.js.map
 debug_logout_logic.d.ts
 debug_logout_logic.d.ts.map
+
+build_log.txt
+warnings.log
+warnings_v2.log
+warnings_v3.log
+warnings_clean.log
+test-password.js

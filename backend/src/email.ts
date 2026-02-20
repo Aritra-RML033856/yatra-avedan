@@ -202,7 +202,7 @@ export const sendEmail = async (
   to: string,
   subject: string,
   html: string,
-  attachments?: Array<{ filename: string, content: Buffer | string, path?: string }>,
+  attachments?: Array<{ filename: string, content?: Buffer | string, path?: string }>,
   cc?: string | string[]
 ) => {
   try {
@@ -229,7 +229,7 @@ export const sendTripNotificationEmail = async (
   subject: string,
   tripDetails: any,
   action?: string,
-  attachments?: Array<{ filename: string, content: Buffer | string, path?: string }>,
+  attachments?: Array<{ filename: string, content?: Buffer | string, path?: string }>,
   cc?: string | string[],
   actionLink?: string
 ) => {

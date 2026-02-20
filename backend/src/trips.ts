@@ -208,7 +208,14 @@ export const getVisaRequests = async (limit: number = 20, offset: number = 0) =>
     FROM trips t
     LEFT JOIN users u ON t.requester_id = u.userid
     LEFT JOIN file_uploads fu ON t.id = fu.trip_id
-    WHERE t.is_visa_request = TRUE AND t.status IN ('${TRIP_STATUS.VISA_PENDING}', '${TRIP_STATUS.VISA_UPLOADED}')
+    WHERE (t.is_visa_request = TRUE OR t.visa_required = TRUE) 
+      AND t.status IN ('${TRIP_STATUS.VISA_PENDING}', '${TRIP_STATUS.BOOKED}', '${TRIP_STATUS.VISA_UPLOADED}')
+      -- Only show in VISA tab if no visa file exists yet (or if standalone and not closed)
+      AND NOT EXISTS (
+        SELECT 1 FROM file_uploads fu2 
+        WHERE fu2.trip_id = t.id AND fu2.file_type = '${FILE_TYPES.VISA}'
+      )
+      AND t.status != '${TRIP_STATUS.CLOSED}'
     GROUP BY t.id, u.email
     ORDER BY t.created_at DESC
     LIMIT $1 OFFSET $2
@@ -858,9 +865,9 @@ export const getAnalytics = async () => {
     totalSpend
   ] = await Promise.all([
     pool.query('SELECT status, COUNT(*) as count FROM trips GROUP BY status'),
-    pool.query("SELECT EXTRACT(YEAR FROM created_at) as year, EXTRACT(MONTH FROM created_at) as month, COUNT(*) as count FROM trips WHERE status = 'BOOKED' GROUP BY year, month ORDER BY year, month"),
-    pool.query("SELECT destination_country as city, COUNT(*) as count FROM trips WHERE status = 'BOOKED' AND destination_country IS NOT NULL AND destination_country != '' GROUP BY destination_country ORDER BY count DESC LIMIT 10"),
-    pool.query("SELECT travel_type, COUNT(*) as count FROM trips WHERE status = 'BOOKED' GROUP BY travel_type"),
+    pool.query("SELECT EXTRACT(YEAR FROM created_at) as year, EXTRACT(MONTH FROM created_at) as month, COUNT(*) as count FROM trips WHERE status IN ('BOOKED', 'CLOSED') GROUP BY year, month ORDER BY year, month"),
+    pool.query("SELECT destination_country as city, COUNT(*) as count FROM trips WHERE status IN ('BOOKED', 'CLOSED') AND destination_country IS NOT NULL AND destination_country != '' GROUP BY destination_country ORDER BY count DESC LIMIT 10"),
+    pool.query("SELECT travel_type, COUNT(*) as count FROM trips WHERE status IN ('BOOKED', 'CLOSED') GROUP BY travel_type"),
     pool.query(`
       SELECT
         EXTRACT(YEAR FROM created_at) as year,
@@ -868,7 +875,7 @@ export const getAnalytics = async () => {
         SUM(total_cost) as total_spend,
         COUNT(*) as booked_trips
       FROM trips
-      WHERE status = 'BOOKED' AND total_cost IS NOT NULL
+      WHERE status IN ('BOOKED', 'CLOSED') AND total_cost IS NOT NULL
       GROUP BY year, month
       ORDER BY year, month
     `),
@@ -879,7 +886,7 @@ export const getAnalytics = async () => {
         SUM(total_cost) as total_spend,
         AVG(total_cost) as avg_spend
       FROM trips
-      WHERE status = 'BOOKED' AND total_cost IS NOT NULL AND department IS NOT NULL
+      WHERE status IN ('BOOKED', 'CLOSED') AND total_cost IS NOT NULL AND department IS NOT NULL
       GROUP BY department
       ORDER BY total_spend DESC
     `),
@@ -891,11 +898,11 @@ export const getAnalytics = async () => {
         AVG(t.total_cost) as avg_spend
       FROM trips t
       JOIN users u ON t.requester_id = u.userid
-      WHERE t.status = 'BOOKED' AND t.total_cost IS NOT NULL
+      WHERE t.status IN ('BOOKED', 'CLOSED') AND t.total_cost IS NOT NULL
       GROUP BY u.role
       ORDER BY total_spend DESC
     `),
-    pool.query(`SELECT SUM(total_cost) as total FROM trips WHERE status = 'BOOKED' AND total_cost IS NOT NULL`)
+    pool.query(`SELECT SUM(total_cost) as total FROM trips WHERE status IN ('BOOKED', 'CLOSED') AND total_cost IS NOT NULL`)
   ]);
 
   return {

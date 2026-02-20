@@ -453,7 +453,7 @@ app.get('/api/trips/visa-requests', authMiddleware, async (req: any, res: any) =
   res.json(await getVisaRequests(limit, offset));
 });
 
-app.post('/api/trips/:id/visa-upload', authMiddleware, visaUpload.single('file'), async (req: any, res: any) => {
+app.post('/api/trips/:id/visa-upload', authMiddleware, visaUpload.single('visaFile'), async (req: any, res: any) => {
   if (req.user.role !== USER_ROLES.TRAVEL_ADMIN && req.user.role !== USER_ROLES.SUPER_ADMIN) return res.status(403).json({ error: 'Unauthorized' });
 
   const tripId = parseInt(req.params.id);
@@ -466,19 +466,82 @@ app.post('/api/trips/:id/visa-upload', authMiddleware, visaUpload.single('file')
 
   // Validate cost
   const costNum = parseInt(totalCost, 10);
-  if (isNaN(costNum) || costNum <= 0) {
+  if (isNaN(costNum) || costNum < 0) {
     return res.status(400).json({ error: 'Invalid cost provided' });
   }
 
-  // Upload file
-  await pool.query('INSERT INTO file_uploads (trip_id, uploaded_by, file_type, filepath, filename) VALUES ($1,$2,$3,$4,$5)',
-    [tripId, req.user.id, FILE_TYPES.VISA, file.path, file.originalname]);
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-  // Update trip status and cost
-  const { uploadVisa } = await import('./trips.js');
-  await uploadVisa(tripId, costNum, req.user);
+      // 1. Upload Visa file
+      await client.query('INSERT INTO file_uploads (trip_id, uploaded_by, file_type, filepath, filename) VALUES ($1,$2,$3,$4,$5)',
+        [tripId, req.user.id, FILE_TYPES.VISA, file.path, file.originalname]);
 
-  res.json({ success: true });
+      // 2. Update trip status and save final cost
+      // Get trip info to check if it's a standalone visa request
+      const tripCheck = await client.query('SELECT is_visa_request FROM trips WHERE id = $1', [tripId]);
+      const isStandalone = tripCheck.rows[0]?.is_visa_request || false;
+
+      if (isStandalone) {
+        // Standalone requests are closed after processing
+        await client.query('UPDATE trips SET status = $1, total_cost = $2, closed_at = NOW(), updated_at = NOW() WHERE id = $3',
+          [TRIP_STATUS.CLOSED, costNum, tripId]);
+      } else {
+        // Regular trips remain BOOKED (or stay as they are) but we record the extra cost
+        // We accumulate or set the final cost? User said "associated costs are reflected". 
+        // If it's a MMT trip, total_cost might already be set. We should probably add to it.
+        await client.query(`
+          UPDATE trips 
+          SET total_cost = COALESCE(total_cost, 0) + $1, 
+              updated_at = NOW() 
+          WHERE id = $2
+        `, [costNum, tripId]);
+      }
+
+      await client.query('COMMIT');
+
+      // 3. Send Email to user with Visa attachment
+      setImmediate(async () => {
+        try {
+          const tripRes = await pool.query(`
+            SELECT t.*, u.email as requester_email 
+            FROM trips t 
+            JOIN users u ON t.requester_id = u.userid 
+            WHERE t.id = $1
+          `, [tripId]);
+
+          if (tripRes.rows.length) {
+            const trip = tripRes.rows[0];
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+            sendTripNotificationEmail(
+              trip.requester_email,
+              EMAIL_SUBJECTS.VISA_PROCESSED,
+              trip,
+              'Your Visa has been processed and is attached to this email.',
+              [{ filename: file.originalname, path: file.path }], // Correct object format
+              undefined,
+              `${frontendUrl}/my-trips`
+            );
+          }
+        } catch (emailErr) {
+          console.error('Error sending VISA processed email:', emailErr);
+        }
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    console.error('Visa upload transaction error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/trips/:id/close', authMiddleware, async (req: any, res: any) => {
